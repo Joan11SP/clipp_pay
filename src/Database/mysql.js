@@ -7,8 +7,7 @@ const conection = mysql.createConnection({
     user:       db_user,
     password:   db_password,
     database:   db_name,
-    port:       db_port,
-     
+    port:       db_port
 });
 
 conection.connect(err =>{
