@@ -22,19 +22,22 @@ const allReporte = async (filtro) => {
 // consulta con filtro para las transacciones
 const report_transaccion =  async (filtro) => {
     try {
+        console.log(filtro.id_icono == -1);
         let report = consultas.repor_tran;
+        let icono = filtro.id_icono == -1 ? "t.idTransaccionIcono is not null " : "t.idTransaccionIcono = "+filtro.id_icono+" "
         report = report + "(t.idTransaccionTipo = "+filtro.tipo_tran+" or "+filtro.tipo_tran+" = -1) and ";
         report = report + "(t.idAdministradorRegistro = "+filtro.admin+" or "+filtro.admin+" = -1)  and ";
         report = report + "(te.idTransaccionEntidad = "+filtro.id_entidad+" or "+filtro.id_entidad+" = -1) and ";
         report = report + "((t.fecha_registro >= "+filtro.fecha_inicio+"  or "+filtro.fecha_inicio+" = -1) and (t.fecha_registro <= "+filtro.fecha_fin+" or "+filtro.fecha_fin+" =-1 )) and ";
-        report = report + "( t.idTransaccionIcono = "+filtro.id_icono+" or "+filtro.id_icono+" = -1 ) "
+        report = report + icono
         report = report + "group by t.idTransaccionTipo, t.idTransaccionEntidad, t.idTransaccionIcono "
-        report = report + "order by t.idTransaccion;"
-
+        report = report + "order by t.idTransaccion limit 500;"
+        console.log(report);
         var reporte = await sql(report);
         return reporte;
 
     } catch (error) {
+        console.log(error);
         throw error;
     }
 }
@@ -45,8 +48,8 @@ const datos_filtro = async () => {
         const icono = await sql(consultas.cons_icono);
         const tipo_tran = await sql(consultas.cons_tipo_tran);
         const entidad = await sql(consultas.const_entidad);
-
-        return {icono,tipo_tran,entidad};
+        const admins  = await sql(consultas.const_admin)
+        return {icono,tipo_tran,entidad,admins};
 
     } catch (error) {
         throw error;

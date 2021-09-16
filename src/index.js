@@ -3,14 +3,14 @@ const express = require('express');
 const app = express();
 const morgan = require('morgan');
 const router = require('./Routes/routes');
-
+const cors = require('cors')
 require('./Database/mysql')
 
 app.use(express.json())
 app.use(express.urlencoded({extended:true}))
 
 app.use(morgan('dev'));
-
+app.use(cors())
 app.use('/api', router);
 
 app.listen(port,() => { console.log('Server on port: ' + port) })

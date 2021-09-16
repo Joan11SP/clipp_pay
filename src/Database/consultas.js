@@ -7,11 +7,20 @@ module.exports = {
     val_compania: "select 1 as result from " + BD + ".compania where usuario = ? and contrasenia = ? ",
     val_entidad: "select 1 from " + BD + ".entidad where idEntidad = ? and habilitado = 1",
     repor_tran : "select t.idTransaccion,te.transaccionEntidad, tt.tipo, ti.descripcion, sum(saldo) total_saldo, t.fecha_registro,count(*) total_tran "
-                    + "from " + db_name + ".transaccion t join " + db_name + ".transaccionTipo tt  on "
-                    + "t.idTransaccionTipo = tt.idTransaccionTipo join " + db_name + ".transaccionEntidad te on "
-                    + "t.idTransaccionEntidad = te.idTransaccionEntidad  join " + db_name + ".transaccionIcono ti on "
-                    + "t.idTransaccionIcono = ti.idTransaccionIcono where ",
+                    + "from " + db_name + ".transaccion t "
+                    + "join " + db_name + ".transaccionTipo tt ON t.idTransaccionTipo = tt.idTransaccionTipo "
+                    + "join " + db_name + ".transaccionEntidad te ON te.idTransaccionEntidad = t.idTransaccionEntidad "
+                    + "join  " + db_name + ".transaccionIcono ti ON t.idTransaccionIcono = ti.idTransaccionIcono where ",
     cons_icono: "select idTransaccionIcono id_icono, descripcion icono from " + db_name + ".transaccionIcono where habilitado = 1;",
     cons_tipo_tran: "select idTransaccionTipo id_tipo, tipo nombre_tipo from " + db_name + ".transaccionTipo;",
-    const_entidad: "select idTransaccionEntidad id_entidad, transaccionEntidad nombre_entidad from clipp.transaccionEntidad;"
+    const_entidad: "select idTransaccionEntidad id_entidad, transaccionEntidad nombre_entidad from clipp.transaccionEntidad;",
+    const_admin: "select idAdministrador id_admin, concat(nombres, ' ', apellidos) nombres  FROM clipp.administrador;"
 }
+
+
+		   
+		   
+		  
+        
+       
+       
