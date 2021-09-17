@@ -14,7 +14,12 @@ module.exports = {
     cons_icono: "select idTransaccionIcono id_icono, descripcion icono from " + db_name + ".transaccionIcono where habilitado = 1;",
     cons_tipo_tran: "select idTransaccionTipo id_tipo, tipo nombre_tipo from " + db_name + ".transaccionTipo;",
     const_entidad: "select idTransaccionEntidad id_entidad, transaccionEntidad nombre_entidad from clipp.transaccionEntidad;",
-    const_admin: "select idAdministrador id_admin, concat(nombres, ' ', apellidos) nombres  FROM clipp.administrador;"
+    const_admin: "select idAdministrador id_admin, concat(nombres, ' ', apellidos) nombres  FROM clipp.administrador;",
+    report_sucursal: "select  t.idtransaccionSucursal,te.transaccionEntidad, tt.tipo,ti.descripcion, sum(saldo),count(*) total_tran "      
+                    + "from  " + db_name + ".transaccionSucursal t "
+                    + "    inner join " + db_name + ".transaccionTipo tt ON t.idTransaccionTipo = tt.idTransaccionTipo "
+                    + "    inner join " + db_name + ".transaccionEntidad te ON te.idTransaccionEntidad = t.idTransaccionEntidad "
+                    + "    left join  " + db_name + ".transaccionIcono ti ON t.idTransaccionIcono = ti.idTransaccionIcono where ", 
 }
 
 

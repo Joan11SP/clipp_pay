@@ -6,7 +6,7 @@ const router = Router();
 
 
 // ROUTES OF REPORT
-router.post('/all-report', validarDatosEntrada, report.all_reporte);
+router.post('/report-sucursal', /*validarDatosEntrada,*/ report.all_reporte);
 router.post('/report-transaccion', report.reporte_transacciones);
 router.post('/datos-filtros', report.get_datos_filtro_reporte);
 
