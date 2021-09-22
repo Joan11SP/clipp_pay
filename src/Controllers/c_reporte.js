@@ -4,16 +4,8 @@ const config = require("../config"),
 
 const all_reporte = async (req,res) => {
 
-    var { tipo_tran, admin,id_entidad,fecha_inicio, fecha_fin,id_icono } = req.body;
-
-    tipo_tran = tipo_tran == null ? -1 : tipo_tran;
-    admin = admin == null ? -1 : admin;
-    id_entidad = id_entidad == null ? -1 : id_entidad;
-    fecha_inicio = fecha_inicio == null ? -1 : fecha_inicio;
-    fecha_fin = fecha_fin == null ? -1 : fecha_fin;
-    id_icono = id_icono == null ? -1 : id_icono;
-
-    let filtro = { tipo_tran, admin,id_entidad,fecha_inicio, fecha_fin,id_icono };
+    let filtro = validar_datos(req.body);
+    
     try {
         var mensaje,ok,resultados;
         var res_report = await report.allReporte(filtro);
@@ -35,16 +27,8 @@ const all_reporte = async (req,res) => {
 
 const reporte_transacciones = async (req,res) => {
 
-    var { tipo_tran, admin,id_entidad,fecha_inicio, fecha_fin,id_icono } = req.body;
-
-    tipo_tran = tipo_tran == null ? -1 : tipo_tran;
-    admin = admin == null ? -1 : admin;
-    id_entidad = id_entidad == null ? -1 : id_entidad;
-    fecha_inicio = fecha_inicio == null ? -1 : fecha_inicio;
-    fecha_fin = fecha_fin == null ? -1 : fecha_fin;
-    id_icono = id_icono == null ? -1 : id_icono;
-
-    let filtro = { tipo_tran, admin,id_entidad,fecha_inicio, fecha_fin,id_icono };
+    
+    let filtro = validar_datos(req.body);
     try {
         
         const resp = await report.report_transaccion(filtro);
@@ -74,6 +58,18 @@ const get_datos_filtro_reporte = async (req,res) => {
         fun.enviarError(res);
     }
 } 
+
+const validar_datos = (datos) => {
+
+    datos.tipo_tran = datos.tipo_tran == null ? -1 : datos.tipo_tran;
+    datos.admin = datos.admin == null ? -1 : datos.admin;
+    datos.id_entidad = datos.id_entidad == null ? -1 : datos.id_entidad;
+    datos.fecha_inicio = datos.fecha_inicio == null ? -1 : datos.fecha_inicio;
+    datos.fecha_fin = datos.fecha_fin == null ? -1 : datos.fecha_fin;
+    datos.id_icono = datos.id_icono == null ? -1 : datos.id_icono;
+
+    return datos;
+}
 
 module.exports = {
     all_reporte,
