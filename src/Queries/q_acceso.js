@@ -1,4 +1,4 @@
-const { val_compania, val_entidad } = require('../Database/consultas')
+const { val_compania, val_entidad,val_user } = require('../Database/consultas')
 
 const mysql = require('../Database/mysql');
 
@@ -25,6 +25,26 @@ const validarAcceso =  async (access) => {
     }
 }
 
+const validarPersona = async (persona) => {
+
+    try {
+        let ok = config.success, mensaje,resultados;
+        let user = val_user;
+        user = user.replace("cedula", persona.identificacion);
+        console.log(user);
+        let va_user = await sql(user);
+        if(va_user[0].val_user == -2){
+            ok = config.error; mensaje = 'Usuario no existe.'
+        }else
+           resultados = va_user[0].val_user; 
+        return {ok,mensaje,resultados}   
+    } catch (error) {
+        throw error;
+    }
+
+}
+
 module.exports = {
-    validarAcceso
+    validarAcceso,
+    validarPersona
 }

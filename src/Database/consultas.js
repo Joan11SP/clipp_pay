@@ -20,7 +20,28 @@ module.exports = {
                     + "    inner join " + db_name + ".sucursal s on t.idtransaccionSucursal = s.idSucursal "
                     + "    inner join " + db_name + ".transaccionTipo tt ON t.idTransaccionTipo = tt.idTransaccionTipo "
                     + "    inner join " + db_name + ".transaccionEntidad te ON te.idTransaccionEntidad = t.idTransaccionEntidad "
-                    + "    left join  " + db_name + ".transaccionIcono ti ON t.idTransaccionIcono = ti.idTransaccionIcono where ", 
+                    + "    left join  " + db_name + ".transaccionIcono ti ON t.idTransaccionIcono = ti.idTransaccionIcono where ",
+    f_val_user: "DELIMITER $$"
+                + "create function " + BD + ".val_user(ced varchar(10)) "
+                + "RETURNS int "
+                + "DETERMINISTIC "
+                + "BEGIN "
+                + "    set @id_cliente=-1, @id=-1; "
+                + "    select idCliente into @id_cliente from " + BD + ".cliente where cedula = ced;"
+                + "    if @id_cliente = -1 then"
+                + "            select idCliente into @id_cliente from " + db_name + ".cliente where cedula = ced;"
+                + "            if @id_cliente <> -1 then"
+                + "                select max(idCliente+1) into @id from " + BD + "..cliente;"
+                + "                insert into " + BD + "..cliente select @id, nombres, apellidos, cedula, celular, correo,now() from " + db_name + ".cliente where cedula = ced;"
+                + "                set @id_cliente = @id;"
+                + "            else"
+                + "                set @id_cliente = -2; -- no existe"
+                + "            end if;			"
+                + "    end if;      "
+	            + "    RETURN @id_cliente;"
+                + "END$$ "
+                + "DELIMITER ;",
+    val_user : "select " + BD + ".val_user('cedula') as val_user" 
 }
 
 
