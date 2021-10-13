@@ -22,17 +22,17 @@ module.exports = {
                     + "    inner join " + db_name + ".transaccionEntidad te ON te.idTransaccionEntidad = t.idTransaccionEntidad "
                     + "    left join  " + db_name + ".transaccionIcono ti ON t.idTransaccionIcono = ti.idTransaccionIcono where ",
     f_val_user: "DELIMITER $$"
-                + "create function " + BD + ".val_user(ced varchar(10)) "
+                + "create function " + BD + ".val_user(ced_cel varchar(20)) "
                 + "RETURNS int "
                 + "DETERMINISTIC "
                 + "BEGIN "
                 + "    set @id_cliente=-1, @id=-1; "
-                + "    select idCliente into @id_cliente from " + BD + ".cliente where cedula = ced;"
+                + "    select idCliente into @id_cliente from " + BD + ".cliente where cedula = ced_cel or celular = ced_cel;"
                 + "    if @id_cliente = -1 then"
-                + "            select idCliente into @id_cliente from " + db_name + ".cliente where cedula = ced;"
+                + "            select idCliente into @id_cliente from " + db_name + ".cliente where cedula = ced_cel or celular = ced_cel;"
                 + "            if @id_cliente <> -1 then"
                 + "                select max(idCliente+1) into @id from " + BD + ".cliente;"
-                + "                insert into " + BD + ".cliente select @id, nombres, apellidos, cedula, celular, correo,now() from " + db_name + ".cliente where cedula = ced;"
+                + "                insert into " + BD + ".cliente select @id, nombres, apellidos, cedula, celular, correo,now() from " + db_name + ".cliente where cedula = ced_cel or celular = ced_cel;"
                 + "                set @id_cliente = @id;"
                 + "            else"
                 + "                set @id_cliente = -2; -- no existe"
@@ -45,7 +45,11 @@ module.exports = {
     insert_transaccion:"insert into " + BD + ".transaccion ('idTransaccion', 'idServicioAplicativo', 'idEntidad', 'idCliente', 'idEstado', 'idTipoPago', 'idCuenta', 'monto', 'saldo', 'razonTransferencia', "
                  + "  'idAdministradorRegistro', 'reverso', 'idAdministradorReverso', 'reversoNota', 'observacionRegistro', 'idTransaccionReverso', 'fecha_registro', "
                  + "  'fecha_reverso', 'idTransaccionPeticion', 'fecha_servicio', 'opcional') " 
-                 + "   values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?); "
+                 + "   values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?); ",
+    sql_update_cliente_pay :"UPDATE clipp_pay.cliente SET nombres = ?, apellidos = ?, correo = ?, celular = ? WHERE idCliente = ?;",
+    sql_update_cliente_pay_cedula : "UPDATE clipp_pay.cliente SET nombres = ?, apellidos = ?, correo = ?, cedula = ? WHERE idCliente = ?;",
+    sql_buscar_cliente_clipp_pay_cedula : "SELECT idCliente FROM clipp_pay.cliente WHERE cedula = ?;",
+    sql_buscar_cliente_clipp_pay_celular : "SELECT idCliente FROM clipp_pay.cliente WHERE celular = ?;"
     
 }
 
