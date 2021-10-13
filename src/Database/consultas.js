@@ -31,8 +31,8 @@ module.exports = {
                 + "    if @id_cliente = -1 then"
                 + "            select idCliente into @id_cliente from " + db_name + ".cliente where cedula = ced;"
                 + "            if @id_cliente <> -1 then"
-                + "                select max(idCliente+1) into @id from " + BD + "..cliente;"
-                + "                insert into " + BD + "..cliente select @id, nombres, apellidos, cedula, celular, correo,now() from " + db_name + ".cliente where cedula = ced;"
+                + "                select max(idCliente+1) into @id from " + BD + ".cliente;"
+                + "                insert into " + BD + ".cliente select @id, nombres, apellidos, cedula, celular, correo,now() from " + db_name + ".cliente where cedula = ced;"
                 + "                set @id_cliente = @id;"
                 + "            else"
                 + "                set @id_cliente = -2; -- no existe"
@@ -41,7 +41,12 @@ module.exports = {
 	            + "    RETURN @id_cliente;"
                 + "END$$ "
                 + "DELIMITER ;",
-    val_user : "select " + BD + ".val_user('cedula') as val_user" 
+    val_user : "select " + BD + ".val_user('cedula') as val_user",
+    insert_transaccion:"insert into " + BD + ".transaccion ('idTransaccion', 'idServicioAplicativo', 'idEntidad', 'idCliente', 'idEstado', 'idTipoPago', 'idCuenta', 'monto', 'saldo', 'razonTransferencia', "
+                 + "  'idAdministradorRegistro', 'reverso', 'idAdministradorReverso', 'reversoNota', 'observacionRegistro', 'idTransaccionReverso', 'fecha_registro', "
+                 + "  'fecha_reverso', 'idTransaccionPeticion', 'fecha_servicio', 'opcional') " 
+                 + "   values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?); "
+    
 }
 
 
