@@ -49,7 +49,9 @@ module.exports = {
     sql_update_cliente_pay :"UPDATE clipp_pay.cliente SET nombres = ?, apellidos = ?, correo = ?, celular = ? WHERE idCliente = ?;",
     sql_update_cliente_pay_cedula : "UPDATE clipp_pay.cliente SET nombres = ?, apellidos = ?, correo = ?, cedula = ? WHERE idCliente = ?;",
     sql_buscar_cliente_clipp_pay_cedula : "SELECT idCliente FROM clipp_pay.cliente WHERE cedula = ?;",
-    sql_buscar_cliente_clipp_pay_celular : "SELECT idCliente FROM clipp_pay.cliente WHERE celular = ?;"
+    sql_buscar_cliente_clipp_pay_celular : "SELECT idCliente FROM clipp_pay.cliente WHERE celular = ?;",
+    sql_registrar_token : "INSERT INTO `clipp`.`clienteToken` (`idCliente`, `token`) VALUES (?, ?);",
+    sql_obtener_correo_cliente: "SELECT correo FROM clipp.cliente WHERE idCliente = ? LIMIT 1;"
     
 }
 

@@ -77,8 +77,7 @@ module.exports.registrarPago = async (req, res, next) => {
                         pago['s'] = monto;
                         pago['sf'] = 0;
                         console.log('llega 1 ' + JSON.stringify(pago))
-                        rspta.status = 200;
-                        return res.status(200).send(pago);
+                        rspta = pago;
                     });
                 }
                 else if (saldoActual > 0) {
@@ -90,8 +89,7 @@ module.exports.registrarPago = async (req, res, next) => {
                             pago['s'] = saldoActual;
                             pago['sf'] = faltante;
                             console.log('llega 2 ' + JSON.stringify(pago))
-                            status = 200;
-                            return res.status(200).send(pago);
+                            rspta = pago;
                         });
                     }
                 } else {
@@ -107,22 +105,19 @@ module.exports.registrarPago = async (req, res, next) => {
     next();
 }
 
-function consultarSaldo(req, res) {
-    var idAdministrador = req.body.idAdministrador;
-    var idAplicativo = req.body.idAplicativo;
-    if (!idAdministrador)
-        return res.status(400).send({ error: 1, param: 'idAdministrador' });
-    if (!idAplicativo)
-        return res.status(400).send({ error: 1, param: 'idAplicativo' });
+module.exports.consultarSaldo = async (req, res,next) =>{
 
-    var auth = req.body.auth;
-    var idPlataforma = req.body.idPlataforma;
-    var imei = req.body.imei;
-    var marca = req.body.marca;
-    var modelo = req.body.modelo;
-    var so = req.body.so;
-    var vs = req.body.vs;
+    var {idAdministrador,idAplicativo,auth,idPlataforma,imei,marca,modelo,so,vs} = req.body;
 
+    if (!idAdministrador){
+        req.body = { error: 1, param: 'idAdministrador' };
+        next();
+    }        
+    if (!idAplicativo){
+        req.body = { error: 1, param: 'idAplicativo' };
+        next();
+    }
+    
     rest_control.verificarAtorizacionAdministrador(idAdministrador, auth, idPlataforma, imei, marca, modelo, so, vs, res, function (autorizado) {
         if (!autorizado)
             return;
@@ -137,18 +132,16 @@ var SQL_CONSULTAR_TRANSACCIONES =
 
 
 
-function solicitarToken(req, res) {
-    var idAplicativo = req.body.idAplicativo;
-    if (!idAplicativo)
-        return res.status(400).send({ error: 1, param: 'idAplicativo' });
-    var idCliente = req.body.idCliente;
-    var auth = req.body.auth;
-    var idPlataforma = req.body.idPlataforma;
-    var imei = req.body.imei;
-    var marca = req.body.marca;
-    var modelo = req.body.modelo;
-    var so = req.body.so;
-    var vs = req.body.vs;
+module.exports.solicitarToken = async (req, res, next) => {
+
+    var {idAplicativo,idCliente, auth, idPlataforma, imei, marca, modelo, so, vs } = req.body;
+
+    if (!idAplicativo){
+        req.body = { error: 1, param: 'idAplicativo' };
+        next();
+    }
+        
+    
 
     rest_control.verificarAtorizacionCliente(idCliente, auth, idPlataforma, imei, marca, modelo, so, vs, res, function (autorizado) {
         if (!autorizado)
@@ -165,39 +158,25 @@ function solicitarToken(req, res) {
     });
 }
 
-const SQL_REGISTRAR_TOKEN =
-    "INSERT INTO `clipp`.`clienteToken` (`idCliente`, `token`) VALUES (?, ?);";
-const SQL_OBTENER_CORREO_CLIENTE =
-    "SELECT correo FROM clipp.cliente WHERE idCliente = ? LIMIT 1;";
 
-function listarTarjetas(idAplicativoClipp, req, res) {
-    var imei = req.body.imei;
-    var con = req.body.con;
 
-    var criterio = req.body.criterio;
-    var tipo = req.body.tipo;
-    var codigoPais = req.body.codigoPais;
+module.exports.listarTarjetas = async (idAplicativoClipp, req, res) => {
 
-    if (!codigoPais)
-        return res.status(400).send({ error: 1, param: 'codigoPais' });
-    if (!criterio)
-        return res.status(400).send({ error: 1, param: 'criterio' });
-    if (!tipo)
-        return res.status(400).send({ error: 1, param: 'tipo' });
-    if (!imei)
-        return res.status(400).send({ error: 1, m: 'imei' });
-    if (!con)
-        return res.status(400).send({ error: 1, m: 'con' });
+    var { imei,con,criterio,tipo,codigoPais} = req.body;
+    let error = 0, param = '';
 
-    // var token = req.body.token;
-    // var key = req.body.key;
-    // var timeStanD = req.body.timeStanD;
-    //
-    // if (sha256(timeStanD + md5(imei)) !== token)
-    // return res.status(401).send({error: 1});
-    //
-    // if (md5(imei + idCliente + con) !== key)
-    // return res.status(401).send({error: 2});
+    if (!codigoPais) {error =  1; param = 'codigoPais'};
+    if (!criterio)   {error =  1; param = 'criterio'};
+    if (!tipo)       {error =  1; param = 'tipo'};
+    if (!imei)       {error =  1; param = 'imei'};
+    if (!con)        {error =  1; param = 'con'};
+
+    if (error == 1){
+        req.body.error = error;
+        req.body.param = param;
+        next();
+    }
+
     cnf.ejecutarResSQL(SQL_CONSULTAR_SALDO_CELULAR, [idAplicativoClipp, criterio, parseInt(criterio), codigoPais], function (clientes) {
         if (clientes.length <= 0)
             return res.status(401).send({ error: 3 });
@@ -212,31 +191,25 @@ function listarTarjetas(idAplicativoClipp, req, res) {
         }, res);
     }, res);
 }
-function realizarCobro(idAplicativoClipp, req, res) {
-    var imei = req.body.imei;
-    var con = req.body.con;
-    var saldo = req.body.saldo;
-    var idProceso = req.body.idProceso;
-    var criterio = req.body.criterio;
-    var tipo = req.body.tipo;
-    var codigoPais = req.body.codigoPais;
+module.exports.realizarCobro = async (idAplicativoClipp, req, res) => {
 
-    if (!codigoPais)
-        return res.status(400).send({ error: 1, param: 'codigoPais' });
-    if (!criterio)
-        return res.status(400).send({ error: 1, param: 'criterio' });
-    if (!tipo)
-        return res.status(400).send({ error: 1, param: 'tipo' });
-    if (!imei)
-        return res.status(400).send({ error: 1, m: 'imei' });
-    if (!con)
-        return res.status(400).send({ error: 1, m: 'con' });
-    if (!idProceso)
-        return res.status(400).send({ error: 1, m: 'idProceso' });
-    if (!saldo)
-        return res.status(400).send({ error: 1, m: 'costo' });
-    if (isNaN(saldo))
-        return res.status(400).send({ error: 1, m: 'costo' });
+    var { imei, con, saldo, idProceso,criterio, tipo, codigoPais } = req.body;
+    let error = 0, param = '';
+
+    if (!codigoPais)    { error =  1; param = 'codigoPais'};
+    if (!criterio)      { error =  1; param = 'criterio'};
+    if (!tipo)          { error =  1; param = 'tipo'};
+    if (!imei)          { error =  1; param = 'imei'};
+    if (!con)           { error =  1; param = 'con'};
+    if (!idProceso)     { error =  1; param = 'idProceso'};
+    if (!saldo)         { error =  1; param = 'saldo'};
+    if (isNaN(saldo))   { error =  1; param = 'saldo'};
+
+    if (error == 1){
+        req.body.error = error;
+        req.body.param = param;
+        next();
+    }
 
     cnf.ejecutarResSQL(SQL_CONSULTAR_SALDO_CELULAR, [idAplicativoClipp, criterio, parseInt(criterio), codigoPais], function (clientes) {
         if (clientes.length <= 0)
