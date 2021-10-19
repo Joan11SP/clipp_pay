@@ -11,5 +11,7 @@ module.exports = {
     msg_error:'Ocurrió un error, vuelve a intentarlo.',
     msg_entidad: 'La entidad no se encuentra habilitada.',
     error:0,
-    msg_compania:'Compañia no encontrada.'
+    msg_compania:'Compañia no encontrada.',
+    error_base: -1,
+    desarrollo:true
 }

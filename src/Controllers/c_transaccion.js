@@ -1,4 +1,8 @@
 const config = require("../config");
+const { ejecutarSQL, ejecutarSQLRespuesta} = require('../Queries/q_transaccion');
+const { sql_consultar_saldo_cedula } = require('../Database/consultas')
+
+
 
 module.exports.registrarPago = async (req, res, next) => {
 
@@ -25,9 +29,33 @@ module.exports.registrarPago = async (req, res, next) => {
     if (!idTransaccionPeticion)
         idTransaccionPeticion = null;
     delete rspta.error;
+
     switch (parseInt(tipo)) {
         case CONSULTAR_CEDULA:
-            return cnf.ejecutarResSQL(SQL_CONSULTAR_SALDO_CEDULA, [idAplicativoClipp, criterio], function (clientesClipp) {
+
+            let res = await ejecutarSQLRespuesta(sql_consultar_saldo_cedula,[idAplicativoClipp, criterio]);
+            if(res.error == config.success){
+
+                if (res.info.length <= 0) {
+                    rspta = { en: -1, m: '1 Cliente no registrado.' };
+                    return;
+                }
+                var saldoActual = clientesClipp[0]['saldo'];
+                if(saldoActual >= monto){
+
+                }
+
+
+            }
+            else{
+                rspta.en = res.error;
+                rspta.m = res.info;
+            }
+
+
+
+
+            return ejecutarResSQL(sql_consultar_saldo_cedula, [idAplicativoClipp, criterio], function (clientesClipp) {
                 if (clientesClipp.length <= 0) {
                     rspta = { en: -1, m: '1 Cliente no registrado.' };
                     return;
@@ -105,19 +133,19 @@ module.exports.registrarPago = async (req, res, next) => {
     next();
 }
 
-module.exports.consultarSaldo = async (req, res,next) =>{
+module.exports.consultarSaldo = async (req, res, next) => {
 
-    var {idAdministrador,idAplicativo,auth,idPlataforma,imei,marca,modelo,so,vs} = req.body;
+    var { idAdministrador, idAplicativo, auth, idPlataforma, imei, marca, modelo, so, vs } = req.body;
 
-    if (!idAdministrador){
+    if (!idAdministrador) {
         req.body = { error: 1, param: 'idAdministrador' };
         next();
-    }        
-    if (!idAplicativo){
+    }
+    if (!idAplicativo) {
         req.body = { error: 1, param: 'idAplicativo' };
         next();
     }
-    
+
     rest_control.verificarAtorizacionAdministrador(idAdministrador, auth, idPlataforma, imei, marca, modelo, so, vs, res, function (autorizado) {
         if (!autorizado)
             return;
@@ -127,21 +155,21 @@ module.exports.consultarSaldo = async (req, res,next) =>{
     });
 }
 
-var SQL_CONSULTAR_TRANSACCIONES =
-    "SELECT t.observacionRegistro AS observacion, t.saldo, DATE_FORMAT(t.fecha_registro, '%d-%m-%Y %H:%i:%s') AS fecha_registro, te.idTransaccionEstado AS iE, te.estado, tt.idTransaccionTipo AS iT, tt.tipo, sr.idSaldoRazon AS iR, sr.razon FROM " + _BD_ + ".transaccion t INNER JOIN " + _BD_ + ".transaccionEstado te ON te.idTransaccionEstado = t.idTransaccionEstado INNER JOIN " + _BD_ + ".transaccionTipo tt ON tt.idTransaccionTipo = t.idTransaccionTipo INNER JOIN " + _BD_ + ".saldoRazon sr ON sr.idSaldoRazon = t.idSaldoRazon WHERE t.idAdministrador = ? AND t.anio = ? AND t.mes = ? ORDER BY idTransaccion;";
+// var SQL_CONSULTAR_TRANSACCIONES =
+//     "SELECT t.observacionRegistro AS observacion, t.saldo, DATE_FORMAT(t.fecha_registro, '%d-%m-%Y %H:%i:%s') AS fecha_registro, te.idTransaccionEstado AS iE, te.estado, tt.idTransaccionTipo AS iT, tt.tipo, sr.idSaldoRazon AS iR, sr.razon FROM " + _BD_ + ".transaccion t INNER JOIN " + _BD_ + ".transaccionEstado te ON te.idTransaccionEstado = t.idTransaccionEstado INNER JOIN " + _BD_ + ".transaccionTipo tt ON tt.idTransaccionTipo = t.idTransaccionTipo INNER JOIN " + _BD_ + ".saldoRazon sr ON sr.idSaldoRazon = t.idSaldoRazon WHERE t.idAdministrador = ? AND t.anio = ? AND t.mes = ? ORDER BY idTransaccion;";
 
 
 
 module.exports.solicitarToken = async (req, res, next) => {
 
-    var {idAplicativo,idCliente, auth, idPlataforma, imei, marca, modelo, so, vs } = req.body;
+    var { idAplicativo, idCliente, auth, idPlataforma, imei, marca, modelo, so, vs } = req.body;
 
-    if (!idAplicativo){
+    if (!idAplicativo) {
         req.body = { error: 1, param: 'idAplicativo' };
         next();
     }
-        
-    
+
+
 
     rest_control.verificarAtorizacionCliente(idCliente, auth, idPlataforma, imei, marca, modelo, so, vs, res, function (autorizado) {
         if (!autorizado)
@@ -162,16 +190,16 @@ module.exports.solicitarToken = async (req, res, next) => {
 
 module.exports.listarTarjetas = async (idAplicativoClipp, req, res) => {
 
-    var { imei,con,criterio,tipo,codigoPais} = req.body;
+    var { imei, con, criterio, tipo, codigoPais } = req.body;
     let error = 0, param = '';
 
-    if (!codigoPais) {error =  1; param = 'codigoPais'};
-    if (!criterio)   {error =  1; param = 'criterio'};
-    if (!tipo)       {error =  1; param = 'tipo'};
-    if (!imei)       {error =  1; param = 'imei'};
-    if (!con)        {error =  1; param = 'con'};
+    if (!codigoPais) { error = 1; param = 'codigoPais' };
+    if (!criterio) { error = 1; param = 'criterio' };
+    if (!tipo) { error = 1; param = 'tipo' };
+    if (!imei) { error = 1; param = 'imei' };
+    if (!con) { error = 1; param = 'con' };
 
-    if (error == 1){
+    if (error == 1) {
         req.body.error = error;
         req.body.param = param;
         next();
@@ -193,19 +221,19 @@ module.exports.listarTarjetas = async (idAplicativoClipp, req, res) => {
 }
 module.exports.realizarCobro = async (idAplicativoClipp, req, res) => {
 
-    var { imei, con, saldo, idProceso,criterio, tipo, codigoPais } = req.body;
+    var { imei, con, saldo, idProceso, criterio, tipo, codigoPais } = req.body;
     let error = 0, param = '';
 
-    if (!codigoPais)    { error =  1; param = 'codigoPais'};
-    if (!criterio)      { error =  1; param = 'criterio'};
-    if (!tipo)          { error =  1; param = 'tipo'};
-    if (!imei)          { error =  1; param = 'imei'};
-    if (!con)           { error =  1; param = 'con'};
-    if (!idProceso)     { error =  1; param = 'idProceso'};
-    if (!saldo)         { error =  1; param = 'saldo'};
-    if (isNaN(saldo))   { error =  1; param = 'saldo'};
+    if (!codigoPais) { error = 1; param = 'codigoPais' };
+    if (!criterio) { error = 1; param = 'criterio' };
+    if (!tipo) { error = 1; param = 'tipo' };
+    if (!imei) { error = 1; param = 'imei' };
+    if (!con) { error = 1; param = 'con' };
+    if (!idProceso) { error = 1; param = 'idProceso' };
+    if (!saldo) { error = 1; param = 'saldo' };
+    if (isNaN(saldo)) { error = 1; param = 'saldo' };
 
-    if (error == 1){
+    if (error == 1) {
         req.body.error = error;
         req.body.param = param;
         next();
@@ -220,3 +248,21 @@ module.exports.realizarCobro = async (idAplicativoClipp, req, res) => {
         return registrarCobroCliente(idAplicativoClipp, idCliente, con, saldo, clientes[0], idProceso, codigoPais, res);
     }, res);
 }
+
+
+
+
+
+
+
+
+
+
+
+var SQL_UPDATE_CLIENTE_CLIPP_PAY =
+    "UPDATE clipp_pay.cliente SET nombres = ?, apellidos = ?, correo = ?, celular = ? WHERE idCliente = ?;";
+
+
+var SQL_BUSCAR_CLIENTE_CLIPP_PAY_CEDULA =
+    "SELECT idCliente FROM clipp_pay.cliente WHERE cedula = ?;";
+
