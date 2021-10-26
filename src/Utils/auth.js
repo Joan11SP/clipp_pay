@@ -1,3 +1,6 @@
+const { ejecutarSQLRespuesta } = require('../Queries/q_transaccion');
+const { sql_verifi_auth_admin, sql_obtener_correo_cliente, sql_registrar_token } = require('../Database/consultas')
+
 const generarAuth = () => {
     var numbers1 = [1, 3, 5, 7, 9];
     var randomstring = '';
@@ -18,62 +21,57 @@ const generarAuth = () => {
     return (randomstring);
 }
 
-function verificarAtorizacionAdministrador(idAdministrador, auth, idPlataforma, imei, marca, modelo, so, vs, res, callback) {
-    if (!marca) {
-        res.status(400).send({ error: 1, param: 'marca' });
-        return callback(false);
+const verifiAuthAdmin = async (body) => {
+
+    let {idAdministrador, auth, idPlataforma, imei, marca, modelo, so, vs, res, callback} = body
+    let respuesta;
+    if (!marca)  respuesta = { error: 1, param: 'marca' };
+    
+    if (!modelo)  respuesta = { error: 1, param: 'modelo' };
+    if (!so) respuesta = { error: 1, param: 'so' };
+    if (!vs) respuesta = { error: 1, param: 'vs' };
+
+    if(respuesta.error != 1)
+    {
+        const req_sql = await ejecutarSQLRespuesta(sql_verifi_auth_admin, [idAdministrador, idPlataforma, imei, auth]);
+        if (req_sql.respuesta.length <= 0) 
+            respuesta = { m: 'Su sesión a caducado =(' };
+        else
+            respuesta = true;
     }
-    if (!modelo) {
-        res.status(400).send({ error: 1, param: 'modelo' });
-        return callback(false);
-    }
-    if (!so) {
-        res.status(400).send({ error: 1, param: 'so' });
-        return callback(false);
-    }
-    if (!vs) {
-        res.status(400).send({ error: 1, param: 'vs' });
-        return callback(false);
-    }
-    cnf.ejecutarResSQL(SQL_VERIFICAR_AUTORIZACION_ADMINISTRADOR, [idAdministrador, idPlataforma, imei, auth], function (autorizaciones) {
-        if (autorizaciones.length <= 0) {
-            callback(false);
-            return res.status(403).send({ m: 'Su sesión a caducado =(' });
-        }
-        return callback(true);
-    }, res);
+    return respuesta;
 }
 
+const solicitarToken = async (req, res) => {
 
-const SQL_VERIFICAR_AUTORIZACION_ADMINISTRADOR = "SELECT fecha_inicio FROM " + _BD_ + ".administradorSessionPush WHERE idAdministrador = ? AND  idPlataforma = ? AND imei = ?  AND auth = MD5(CONCAT(?, 'JpKradacTounk')) AND activado = 1 LIMIT 1;";
-
-const solicitarToken = async (req, res, next) => {
-
-    var { idAplicativo, idCliente, auth, idPlataforma, imei, marca, modelo, so, vs } = req.body;
-
-    if (!idAplicativo) {
-        req.body = { error: 1, param: 'idAplicativo' };
-        next();
+    let respuesta;
+    if (!req.body.idAplicativo) {
+        respuesta = { error: 1, param: 'idAplicativo' };
     }
-
-
-
-    rest_control.verificarAtorizacionCliente(idCliente, auth, idPlataforma, imei, marca, modelo, so, vs, res, function (autorizado) {
-        if (!autorizado)
+    else
+    {
+        const auth = await verificarAtorizacionCliente(req.body);
+        if (!auth)
             return;
-        let token = rest_control.generarAuth(6);
-        cnf.ejecutarResSQL(SQL_OBTENER_CORREO_CLIENTE, [idCliente], function (cliente) {
-            if (cliente.length <= 0)
-                return res.status(200).send({ en: -1, m: 'No se pudo obtener ciente' });
-            cnf.ejecutarResSQL(SQL_REGISTRAR_TOKEN, [idCliente, token], function (registro) {
-                mail.enviarMailGenerico(idAplicativo, cliente[0]['correo'], 'TOKEN DE ACCESO', [{ "clave": "Token", "valor": token.toString() }]);
-                return res.status(200).send({ en: 1, idClienteToken: registro['insertId'], m: 'Token enviado correctamente.' });
-            }, res);
-        }, res);
-    });
+        let token = generarAuth(6);
+
+        const cliente = await ejecutarSQLRespuesta(sql_obtener_correo_cliente, [req.body.idCliente]);
+
+        if (cliente.length <= 0)
+            respuesta = { en: -1, m: 'No se pudo obtener cliente' };
+        else
+        {
+            const registro = await ejecutarSQLRespuesta(sql_registrar_token, [req.body.idCliente, token]);
+            await mail.enviarMailGenerico(req.body.idAplicativo, cliente[0]['correo'], 'TOKEN DE ACCESO', [{ "clave": "Token", "valor": token.toString() }]);
+            respuesta = { en: 1, idClienteToken: registro['insertId'], m: 'Token enviado correctamente.' };
+        }
+    }
+
+    return respuesta;
+    
 }
 
-const SQL_REGISTRAR_TOKEN =
-    "INSERT INTO `clipp`.`clienteToken` (`idCliente`, `token`) VALUES (?, ?);";
-const SQL_OBTENER_CORREO_CLIENTE =
-    "SELECT correo FROM clipp.cliente WHERE idCliente = ? LIMIT 1;";
+module.exports = {
+    verifiAuthAdmin,
+    solicitarToken
+}

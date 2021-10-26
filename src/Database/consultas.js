@@ -46,15 +46,19 @@ module.exports = {
                  + "  'idAdministradorRegistro', 'reverso', 'idAdministradorReverso', 'reversoNota', 'observacionRegistro', 'idTransaccionReverso', 'fecha_registro', "
                  + "  'fecha_reverso', 'idTransaccionPeticion', 'fecha_servicio', 'opcional') " 
                  + "   values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?); ",
-    sql_update_cliente_pay :"UPDATE clipp_pay.cliente SET nombres = ?, apellidos = ?, correo = ?, celular = ? WHERE idCliente = ?;",
-    sql_update_cliente_pay_cedula : "UPDATE clipp_pay.cliente SET nombres = ?, apellidos = ?, correo = ?, cedula = ? WHERE idCliente = ?;",
-    sql_buscar_cliente_clipp_pay_cedula : "SELECT idCliente FROM clipp_pay.cliente WHERE cedula = ?;",
-    sql_registrar_token : "INSERT INTO `clipp`.`clienteToken` (`idCliente`, `token`) VALUES (?, ?);",
-    sql_obtener_correo_cliente: "SELECT correo FROM clipp.cliente WHERE idCliente = ? LIMIT 1;",
-    sql_consultar_saldo_cedula: "",
+    sql_update_cliente_pay :"UPDATE " + BD + ".cliente SET nombres = ?, apellidos = ?, correo = ?, celular = ? WHERE idCliente = ?;",
+    sql_update_cliente_pay_cedula : "UPDATE " + BD + ".cliente SET nombres = ?, apellidos = ?, correo = ?, cedula = ? WHERE idCliente = ?;",
+    sql_buscar_cliente_clipp_pay_cedula : "SELECT idCliente FROM " + BD + ".cliente WHERE cedula = ?;",
+    sql_registrar_token : "INSERT INTO " + db_name + ".clienteToken ('idCliente', 'token') VALUES (?, ?);",
+    sql_obtener_correo_cliente: "SELECT correo FROM " + db_name + ".cliente WHERE idCliente = ? LIMIT 1;",
+    sql_consultar_saldo_cedula: "SELECT IFNULL(sr.razon,'') AS razon, IFNULL(saldo,0) AS saldo, cli.idCliente, cli.nombres, cli.apellidos, IFNULL(cli.cedula,'') AS cedula, cli.correo, cli.celular FROM " + db_name + ".cliente cli LEFT JOIN " + db_name + ".saldo s ON cli.idCliente = s.idCliente  LEFT JOIN " + db_name + ".saldoRazon sr ON sr.idSaldoRazon = s.idSaldoRazon AND sr.idSaldoRazon = 1 WHERE cli.idAplicativo = ? AND cli.cedula = ? LIMIT 1;",
     sql_insertar_cliente_clipp_pay: "insert into " + BD + ".cliente (nombres, apellidos, cedula, correo, celular) values (?, ?, ?, ?, ?) ",
     sql_update_cliente_clipp_pay_cedula: "update " + BD + ".cliente SET nombres = ?, apellidos = ?, correo = ?, cedula = ? WHERE idCliente = ?;",
-    sql_buscar_cliente_clipp_pay_celular: "select idCliente FROM " + BD + ".cliente where celular = ?;"
+    sql_buscar_cliente_clipp_pay_celular: "select idCliente FROM " + BD + ".cliente where celular = ?;",
+    sql_obtener_codigo_pais_cliente: "select concat(codigoPais,SUBSTRING(celular, 2)) as phone from " + db_name + ".cliente where idCliente = ? LIMIT 1;",
+    sql_obtener_car_cliente: "select tbl.cardHolder, tbl.tipoEntidad, (AES_DECRYPT('cn'.'op', ?)) AS 'op', (AES_DECRYPT('cn'.'sum', ?)) AS 'sum', (AES_DECRYPT('cn'.'mul', ?)) AS 'mul', (AES_DECRYPT('cn'.'div',?)) AS 'div', 'tbl'.'number', (AES_DECRYPT('tbl'.'verificationCode',?)) AS 'verificationCode', (AES_DECRYPT('tbl'.'cardToken',?)) AS 'cardToken' FROM " + db_name + "describ.con cn INNER JOIN " + db_name + "_encrip.tabl tbl ON cn.tks = tbl.tks AND cn.con = tbl.con WHERE cn.tks = ? AND cn.con = ? LIMIT 1;",
+    sql_verifi_auth_admin = "SELECT fecha_inicio FROM " + db_name + ".administradorSessionPush WHERE idAdministrador = ? AND  idPlataforma = ? AND imei = ?  AND auth = MD5(CONCAT(?, 'JpKradacTounk')) AND activado = 1 LIMIT 1;",
+           
     
 }
 

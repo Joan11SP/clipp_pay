@@ -13,5 +13,6 @@ module.exports = {
     error:0,
     msg_compania:'Compañia no encontrada.',
     error_base: -1,
-    desarrollo:true
+    desarrollo:true,
+    LLAVE_ENCRIP:"HgjYANAjpDesert51239HgateuyVV"
 }
