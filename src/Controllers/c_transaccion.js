@@ -1,5 +1,5 @@
 const config = require("../config");
-const { ejecutarSQL, ejecutarSQLRespuesta, registrarClienteCelular} = require('../Queries/q_transaccion');
+const { ejecutarSQL, ejecutarSQLRespuesta, registrarClienteCelular,registrarCobroCliente } = require('../Queries/q_transaccion');
 const { sql_consultar_saldo_cedula } = require('../Database/consultas');
 const authorization = require('../Utils/auth');
 
@@ -155,7 +155,6 @@ module.exports.consultarSaldo = async (req, res, next) => {
     next();
 }
 
-
 module.exports.listarTarjetas = async (idAplicativoClipp, req, res) => {
 
     var { imei, con, criterio, tipo, codigoPais } = req.body;
@@ -191,6 +190,7 @@ module.exports.listarTarjetas = async (idAplicativoClipp, req, res) => {
     next();
     
 }
+
 module.exports.realizarCobro = async (idAplicativoClipp, req, res) => {
 
     var { imei, con, saldo, idProceso, criterio, tipo, codigoPais } = req.body;
@@ -211,32 +211,42 @@ module.exports.realizarCobro = async (idAplicativoClipp, req, res) => {
         next();
     }
 
-    cnf.ejecutarResSQL(SQL_CONSULTAR_SALDO_CELULAR, [idAplicativoClipp, criterio, parseInt(criterio), codigoPais], function (clientes) {
-        if (clientes.length <= 0)
-            return res.status(401).send({ error: 3 });
-        if (clientes[0]['cedula'] == null)
-            return res.status(200).send({ en: 2, m: 'Por favor actualice la cédula en su perfil' });
+    const clientes = await ejecutarSQLRespuesta(SQL_CONSULTAR_SALDO_CELULAR, [idAplicativoClipp, criterio, parseInt(criterio), codigoPais]);
+    if (clientes.respuesta.length <= 0)
+        req.body = { error: 3 };
+    else if (clientes[0]['cedula'] == null)
+        req.body = { en: 2, m: 'Por favor actualice la cédula en su perfil' };
+    else
+    {
         var idCliente = clientes[0]['idCliente'];
-        return registrarCobroCliente(idAplicativoClipp, idCliente, con, saldo, clientes[0], idProceso, codigoPais, res);
-    }, res);
+        req.body = await registrarCobroCliente(idAplicativoClipp, idCliente, con, saldo, clientes[0], idProceso, codigoPais);
+    }
+    next();
+    
 }
 
-module.exports = {
-
-}
-
-
-
-
-
-
-
-
-
-var SQL_UPDATE_CLIENTE_CLIPP_PAY =
-    "UPDATE clipp_pay.cliente SET nombres = ?, apellidos = ?, correo = ?, celular = ? WHERE idCliente = ?;";
-
-
-var SQL_BUSCAR_CLIENTE_CLIPP_PAY_CEDULA =
-    "SELECT idCliente FROM clipp_pay.cliente WHERE cedula = ?;";
-
+SQL_REGISTART_TRANSACCION_PAY
+ID_TRANSACCION_ESTADO_TRANSACCION
+IP_SERVIDOR_NODE
+var_payphone.ES_TRANSACCION_TIPO_DONACION
+var_payphone.SQL_REGISTAR_TRANSACCION
+SQL_REGISTAR_TRANSACCION
+AMBIENTE
+CONSULTAR_CEDULA
+CONSULTAR_CELULAR
+SQL_CONSULTAR_SALDO_CELULAR
+var_payphone.SQL_TRANSACCION_TOKEN
+var_payphone.SQL_SOLICITUD_REVERSO_REVERSADA
+var_payphone.SQL_SOLICITUD_REVERSO
+var_payphone.SQL_ACTUALIZAR_CARDTOKEN
+var_payphone.ES_NO_APROBADA
+var_payphone.ES_NO_REALIZADA
+var_payphone.ES_APROBADA
+var_payphone.ES_ERROR
+var_payphone.SQL_LISTAR_TARJETAS
+IS_DESARROLLO
+SQL_CONSULTAR_SALDO
+ID_SALDO_RAZON_CLIPP
+ID_TRANSACCION_TIPO_EGRESO
+SQL_CONSULTAR_SALDO_CELULAR
+var_payphone.SQL_VERIFICAR_TOKEN

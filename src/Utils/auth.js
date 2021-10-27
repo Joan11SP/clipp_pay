@@ -57,7 +57,7 @@ const solicitarToken = async (req, res) => {
 
         const cliente = await ejecutarSQLRespuesta(sql_obtener_correo_cliente, [req.body.idCliente]);
 
-        if (cliente.length <= 0)
+        if (cliente.respuesta.length <= 0)
             respuesta = { en: -1, m: 'No se pudo obtener cliente' };
         else
         {

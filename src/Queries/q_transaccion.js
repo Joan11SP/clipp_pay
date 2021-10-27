@@ -10,7 +10,7 @@ const
         sql_obtener_car_cliente
     } = require('../Database/consultas');
 
-const { solicitudApi } = require('../Utils/funciones')
+const var_payphone = require('../Database/payphone');
 
 const sql = util.promisify(mysql.query).bind(mysql);
 
@@ -123,28 +123,28 @@ const registrarCobroClipp = async (icono, idClienteClipp, criterio, idCliente, m
     var transaccion = await registrarTransaccion(icono, idClienteClipp, monto, ID_TRANSACCION_TIPO_EGRESO, ID_SALDO_RAZON_CLIPP, 1, observacion, JSON.stringify({idClienteClipp: idClienteClipp, idTransaccionPeticion: idTransaccionPeticion, criterio: criterio}), idTransaccionPeticion, fecha_servicio, ID_TR_ENTIDAD_CLIPP);
 
     if (transaccion <= 0)
-        return res({en: -1, m: 'Lo sentimos, pero la recarga no se puede realizar'});
-
-    const registrar = await registrarTransaccionPay('1', '1', '1', '1', '1', '1', monto, idAdministradorRegistro);
-
-    repuesta = {en: 1, m: 'Transacción realizada correctamente.', idTransaccion: transaccion}
-
+        respuesta = {en: -1, m: 'Lo sentimos, pero la recarga no se puede realizar'};
+    else
+    {
+        const registrar = await registrarTransaccionPay('1', '1', '1', '1', '1', '1', monto, idAdministradorRegistro);
+        repuesta = {en: 1, m: 'Transacción realizada correctamente.', idTransaccion: transaccion}
+    }
     return respuesta;
 }
 const registrarTransaccionPay = async (idServicioAplicativo, idEntidad, idCliente, idEstado, idTipoPago, idCuenta, saldo, idAdministradorRegistro, callback) => {
 
-    var respuesta = await ejecutarSQLRespuesta(SQL_REGISTART_TRANSACCION_PAY, [idServicioAplicativo, idEntidad, idCliente, idEstado, idTipoPago, idCuenta, saldo, idAdministradorRegistro]);
-    if (respuesta['error'] || respuesta['insertId'] <= 0)
-        return respuesta = -1;
-    return respuesta['insertId'];
+    var regis = await ejecutarSQLRespuesta(SQL_REGISTART_TRANSACCION_PAY, [idServicioAplicativo, idEntidad, idCliente, idEstado, idTipoPago, idCuenta, saldo, idAdministradorRegistro]);
+    if (regis.respuesta['error'] || regis.respuesta['insertId'] <= 0)
+        return regis = -1;
+    return regis.respuesta['insertId'];
     
 }
 const registrarTransaccion = async (icono, idCliente, saldo, idTransaccionTipo, idSaldoRazon, idAdministradorRegistro, observacion, opcional, idTransaccionPeticion, fecha_servicio, idTransaccionEntidad) => {
     
-    var respuesta = await ejecutarSQLRespuesta(SQL_REGISTART_TRANSACCION, [icono, idCliente, ID_TRANSACCION_ESTADO_TRANSACCION, idTransaccionTipo, idSaldoRazon, saldo, idAdministradorRegistro, observacion, opcional, idTransaccionPeticion, idTransaccionEntidad, fecha_servicio]);
-    if (respuesta['error'] || respuesta['insertId'] <= 0)
-        return respuesta = -1;
-    return respuesta['insertId'];
+    var regis = await ejecutarSQLRespuesta(SQL_REGISTART_TRANSACCION, [icono, idCliente, ID_TRANSACCION_ESTADO_TRANSACCION, idTransaccionTipo, idSaldoRazon, saldo, idAdministradorRegistro, observacion, opcional, idTransaccionPeticion, idTransaccionEntidad, fecha_servicio]);
+    if (regis.respuesta['error'] || regis.respuesta['insertId'] <= 0)
+        return regis = -1;
+    return regis.respuesta['insertId'];
 }
 
 const debitarCliente = async (idAplicativo, car, idCliente, con, costo, cliente, idProceso, codigoPais) => {
@@ -187,26 +187,30 @@ const debitarCliente = async (idAplicativo, car, idCliente, con, costo, cliente,
     const token_aplicativo = await ejecutarSQLRespuesta(var_payphone.SQL_TOKEN_APLICATIVO + AMBIENTE, [idAplicativo]);
     if (token_aplicativo.respuesta.length <= 0)
         respuesta = { en: -1, m: 'La aplicación no está autorizada para transaccionar con tarjetas de crédito.' }
-    else {
+    else 
+    {
         let Authorization = token_aplicativo[0]['Authorization'];
         let IDENTIFICATION = IP_SERVIDOR_NODE + '.' + token_aplicativo.respuesta[0]['identificativo'];
         const regis_transaccion = await ejecutarSQLRespuesta(var_payphone.SQL_REGISTAR_TRANSACCION, [idCliente, IDENTIFICATION, con, car.number, body.amount, body.amountWithTax, body.amountWithoutTax, body.tax, body.service, body.tip, body.optionalParameter, cliente['correo'], phoneNumber, var_payphone.ES_TRANSACCION_TIPO_DONACION, JSON.stringify({ idProceso: idProceso })]);
         if (regis_transaccion.respuesta['insertId'] <= 0)
             respuesta = { en: -2, m: '¡No se pudo realizar la compra.' };
-        else {
+        else 
+        {
             var key = CryptoJS.enc.Utf8.parse(token_aplicativo.respuesta[0]['passwordCodificacion']);
             var iv = CryptoJS.enc.Utf8.parse('');
             var cardholder = CryptoJS.AES.encrypt(cliente['nombre'], key, { iv: iv });
             var holder = cardholder + '';
 
             var encrbase = car['cardHolder'];
-            if (encrbase != null) {
+            if (encrbase != null) 
+            {
                 var duenio = base64decode(encrbase + '');
                 cardholder = CryptoJS.AES.encrypt(duenio, key, { iv: iv });
                 holder = cardholder + '';
             }
 
-            if (car.cardToken.toString('ascii').length > 36) {
+            if (car.cardToken.toString('ascii').length > 36) 
+            {
                 url = 'https://pay.payphonetodoesposible.com/api/v2/transaction/Pay';
                 body.documentId = cliente['cedula'];
                 body.storeId = token_aplicativo.respuesta[0]['idTienda'];
@@ -221,30 +225,36 @@ const debitarCliente = async (idAplicativo, car, idCliente, con, costo, cliente,
 }
 
 const realizarPagoVerificacionCliente = async (Authorization, costo, body, idT, idCliente, url, numberTarjeta) => {
-    var headers = {
-        'Content-Type': 'application/json',
-        Authorization: Authorization
+    var options = {
+        method: 'POST',
+        url: url,
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: Authorization
+        },
+        body: body,
+        json: true
     };
-
-    try {
-        
-    } catch (error) {
-        throw error;
-    }
-
-    request(options, function (err, httpResponse, respuesta) {
-        if (err) {
-            cnf.ejecutarSQL(var_payphone.SQL_ACTULIZAR_RESPUESTA_TRANSACCION, [0, JSON.stringify(err), var_payphone.ES_ERROR, idT]);
-            return res.status(200).send({en: -3, m: 'Ups lo sentimos, por favor intenta de nuevo más tarde.'});
+    let respuesta={};
+    request(options, async (err, httpResponse, respuesta) =>
+    {
+        if (err) 
+        {
+            await ejecutarSQL(var_payphone.SQL_ACTULIZAR_RESPUESTA_TRANSACCION, [0, JSON.stringify(err), var_payphone.ES_ERROR, idT]);
+            return respuesta = { en: -3, m: 'Ups lo sentimos, por favor intenta de nuevo más tarde.' };
         }
-        if (httpResponse.statusCode === 201) {
-            if (respuesta.statusCode == 3) {
+        if (httpResponse.statusCode === 201) 
+        {
+            if (respuesta.statusCode == 3) 
+            {
                 let transactionId = respuesta.transactionId;
-                cnf.ejecutarSQL(var_payphone.SQL_ACTUALIZAR_ID_TRANSACCION, [transactionId, idT]);
-                cnf.ejecutarSQL(var_payphone.SQL_ACTULIZAR_RESPUESTA_TRANSACCION, [httpResponse.statusCode, JSON.stringify(respuesta), var_payphone.ES_APROBADA, idT]);
-                if (IS_DESARROLLO) {
-                    var resultado = tarjeta_credito.solicitarReverso({id: respuesta.transactionId}, idT);
-                    if (resultado) {
+                await ejecutarSQL(var_payphone.SQL_ACTUALIZAR_ID_TRANSACCION, [transactionId, idT]);
+                await ejecutarSQL(var_payphone.SQL_ACTULIZAR_RESPUESTA_TRANSACCION, [httpResponse.statusCode, JSON.stringify(respuesta), var_payphone.ES_APROBADA, idT]);
+                if (IS_DESARROLLO) 
+                {
+                    var resultado = await solicitarReverso({id: respuesta.transactionId}, idT);
+                    if (resultado) 
+                    {
                         var data = [
                             {clave: "Sistema", valor: "CLIPP"},
                             {clave: "idPayphone", valor: respuesta.transactionId},
@@ -255,37 +265,135 @@ const realizarPagoVerificacionCliente = async (Authorization, costo, body, idT, 
                         ]
                         mensajes_wp.armarTextoWp('Reverso', data, [body.phoneNumber, '593997396843'], '');
                     }
-                    if (url == 'https://pay.payphonetodoesposible.com/api/transaction/Pay') {
-                        cnf.ejecutarSQL(var_payphone.SQL_ACTUALIZAR_CARDTOKEN, [httpResponse.cardTokenV2, LLAVE_ECRIP, numberTarjeta, idCliente]);
-                    }
+                    if (url == 'https://pay.payphonetodoesposible.com/api/transaction/Pay') 
+                        await ejecutarSQL(var_payphone.SQL_ACTUALIZAR_CARDTOKEN, [httpResponse.cardTokenV2, LLAVE_ECRIP, numberTarjeta, idCliente]);
+                    
                 }
-                tarjeta_credito.consultarDetalleTransaccion(idCliente, numberTarjeta, respuesta.transactionId, idT);
-                return res.status(200).send({en: 1, m: 'Su Transaccion por el valor de $' + costo + ' ha sido realizada correctamente.', transactionId: respuesta.transactionId, number: numberTarjeta});
-            } else {
-                cnf.ejecutarSQL(var_payphone.SQL_ACTULIZAR_RESPUESTA_TRANSACCION, [httpResponse.statusCode, JSON.stringify(respuesta), var_payphone.ES_NO_APROBADA, idT]);
-                try {
+                await consultarDetalleTransaccion(idCliente, numberTarjeta, respuesta.transactionId, idT);
+                respuesta = { en: 1, m: 'Su Transaccion por el valor de $' + costo + ' ha sido realizada correctamente.', transactionId: respuesta.transactionId, number: numberTarjeta };
+            } 
+            else 
+            {
+                await ejecutarSQL(var_payphone.SQL_ACTULIZAR_RESPUESTA_TRANSACCION, [httpResponse.statusCode, JSON.stringify(respuesta), var_payphone.ES_NO_APROBADA, idT]);
+                try 
+                {
                     let mensaje = respuesta.message;
-                    return res.status(200).send({en: -4, m: mensaje});
-                } catch (e) {
-                    return res.status(200).send({en: -4, m: 'Ups lo sentimos, por favor intenta de nuevo más tarde.'});
+                    respuesta = {en: -4, m: mensaje};
+                } 
+                catch (e) 
+                {
+                    respuesta = {en: -4, m: 'Ups lo sentimos, por favor intenta de nuevo más tarde.'};
                 }
             }
-        } else {
-            cnf.ejecutarSQL(var_payphone.SQL_ACTULIZAR_RESPUESTA_TRANSACCION, [httpResponse.statusCode, JSON.stringify(respuesta), var_payphone.ES_NO_REALIZADA, idT]);
-            try {
+        } 
+        else 
+        {
+            await ejecutarSQL(var_payphone.SQL_ACTULIZAR_RESPUESTA_TRANSACCION, [httpResponse.statusCode, JSON.stringify(respuesta), var_payphone.ES_NO_REALIZADA, idT]);
+            try 
+            {
                 let mensaje = respuesta.message;
-                return res.status(200).send({en: -5, m: mensaje});
-            } catch (e) {
-                return res.status(200).send({en: -5, m: 'Ups lo sentimos, por favor intenta de nuevo más tarde.'});
+                respuesta = {en: -5, m: mensaje};
+            } 
+            catch (e) 
+            {
+                respuesta = {en: -5, m: 'Ups lo sentimos, por favor intenta de nuevo más tarde.'};
             }
         }
     });
+    return respuesta;
+}
+const solicitarReverso = async (body, idT) => {
+
+    var idAplicativo = 1;
+    const tokens = await ejecutarSQLRespuesta(var_payphone.SQL_TOKEN_APLICATIVO + AMBIENTE, [idAplicativo]);
+    let respuesta;
+    if (tokens.respuesta.length <= 0)
+        return administrador.imprimirErrLogs('Por favor registre el token ');
+    else
+    {
+        let Authorization = tokens[0]['Authorization'];
+        await ejecutarSQL(var_payphone.SQL_SOLICITUD_REVERSO, [idT]);
+        var options = {
+            method: 'POST',
+            url: 'https://pay.payphonetodoesposible.com/api/Reverse',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: Authorization
+            },
+            body: body,
+            json: true
+        };
+        request(options, function (err, httpResponse, respuesta) {
+            if (err)
+                return administrador.imprimirErrLogs('Se solicito reversar pero ocurrio un error: ' + err + ' idT: ' + idT);
+            if (httpResponse.statusCode === 200 && respuesta == true)
+                return cnf.ejecutarSQL(var_payphone.SQL_SOLICITUD_REVERSO_REVERSADA, [idT]);
+            return administrador.imprimirErrLogs('Se solicito reversar pero ocurrio un error: ' + respuesta + ' idT: ' + idT);
+        });
+    }
+    
 }
 
 
+const consultarDetalleTransaccion = async (tks, number, id_transaccion, idT) => {
+    var idAplicativo = 1;
+    const tokens = await ejecutarSQLRespuesta(var_payphone.SQL_TOKEN_APLICATIVO + AMBIENTE, [idAplicativo]);
+    if (tokens.respuesta.length <= 0)
+            return administrador.imprimirErrLogs('Por favor registre el token ');
+        let Authorization = tokens[0]['Authorization'];
+        var options = {
+            method: 'GET',
+            url: 'https://pay.payphonetodoesposible.com/api/Sale/' + id_transaccion,
+            headers: {
+                Authorization: Authorization
+            }
+        };
+        request(options, function (err, httpResponse, respuesta) {
+            if (err)
+                return administrador.imprimirErrLogs('Ocurrio un error en informacion adicional: ' + JSON.stringify(err) + ' idT: ' + idT + ' transaccion ' + id_transaccion);
+            if (httpResponse['statusCode'] === 200) {
+                var respuestajs = JSON.parse(respuesta);
+                var credito = respuestajs['cardType'] === 'Debit' ? 2 : 1;
+                await ejecutarSQL(var_payphone.SQL_INFORMACION_ADICIONAL_TARJETA, [credito, base64encode(respuestajs['bin']), base64encode(respuestajs['lastDigits']), respuestajs['cardBrandCode'], respuestajs['cardBrand'], respuestajs['document'], respuestajs['currency'], respuestajs['regionIso'], respuestajs['transactionType'], tks, number]);
+                return await ejecutarSQL(var_payphone.SQL_INFORMACION_ADICIONAL_TRANSACCION, [credito, idT]);
+            }
+            return await consultarDetalleTransaccion_v2(tks, number, id_transaccion, idT);
+            //administrador.imprimirErrLogs('Ocurrio un problema en informacion adicional: ' + JSON.stringify(respuesta) + ' idT: ' + idT + ' transaccion ' + id_transaccion);
+        });
+}
+
+
+const consultarDetalleTransaccion_v2 = async (tks, number, id_transaccion, idT) => {
+    var idAplicativo = 1;
+    const tokens = await ejecutarSQLRespuesta(var_payphone.SQL_TOKEN_APLICATIVO + AMBIENTE, [idAplicativo]);
+
+    if (tokens.respuesta.length <= 0)
+        return administrador.imprimirErrLogs('Por favor registre el token ');
+    let Authorization = "Bearer 2NDY7vYB693qh-feSHA7rUOXazLcYeZ4Lha4IugyXj5dKsA8JHkibIf3E_ciToKa7P7ZBEucmAPOQCw2w4CgViRlf2im7udQHrSaBOQBr2M1pV-kfu8xufEieHx6qdJsKzMtft4BveWmsQcZ3DQIyz8m7v6F58TOJyUEMOz5pTZn3VZLuVj2p8TbGRuLsGiziBXi4-1BtYmqXIeQBSHynqqjnG8lFoSXfgDv8VDoEDNyDx17r_MCjEByWC_WcIOZ12ANJUBuowmZVPzgo8NOdi5Eizp7zW5Dla8vE1Lpw7WzmzyapB7P_qGBuHk2xghH5ta9KQ";
+    var options = {
+        method: 'GET',
+        url: 'https://pay.payphonetodoesposible.com/api/Sale/' + id_transaccion,
+        headers: {
+            Authorization: Authorization
+        }
+    };
+    request(options, function (err, httpResponse, respuesta) {
+        if (err)
+            return administrador.imprimirErrLogs('Ocurrio un error en informacion adicional: ' + JSON.stringify(err) + ' idT: ' + idT + ' transaccion ' + id_transaccion);
+        if (httpResponse['statusCode'] === 200) {
+            var respuestajs = JSON.parse(respuesta);
+            var credito = respuestajs['cardType'] === 'Debit' ? 2 : 1;
+            await ejecutarSQL(var_payphone.SQL_INFORMACION_ADICIONAL_TARJETA, [credito, base64encode(respuestajs['bin']), base64encode(respuestajs['lastDigits']), respuestajs['cardBrandCode'], respuestajs['cardBrand'], respuestajs['document'], respuestajs['currency'], respuestajs['regionIso'], respuestajs['transactionType'], tks, number]);
+            await ejecutarSQL(var_payphone.SQL_INFORMACION_ADICIONAL_TRANSACCION, [credito, idT]);
+            return await ejecutarSQL(var_payphone.SQL_TRANSACCION_TOKEN, [credito, idT]);
+        }
+        return administrador.imprimirErrLogs('Ocurrio un problema en informacion adicional: ' + JSON.stringify(respuesta) + ' idT: ' + idT + ' transaccion ' + id_transaccion);
+    });
+}
 
 module.exports = {
     ejecutarSQL,
     ejecutarSQLRespuesta,
-    registrarClienteCelular
+    registrarClienteCelular,
+    registrarCobroCliente
 }
