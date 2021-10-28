@@ -12,7 +12,8 @@ router.post('/report-transaccion', report.reporte_transacciones);
 router.post('/datos-filtros', report.get_datos_filtro_reporte);
 
 // ROUTES OF TRANSACTION
-router.post('/registro_pago', validarDatosEntrada, transaccion.registrarPago);
+router.post('/consultarSaldo', transaccion.consultarSaldo);
+router.post('/registro_pago', transaccion.registrarPago);
 
 module.exports = router;
 

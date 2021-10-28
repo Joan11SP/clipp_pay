@@ -32,14 +32,14 @@ module.exports.registrarPago = async (req, res, next) => {
     delete rspta.error;
 
     switch (parseInt(tipo)){
-        case CONSULTAR_CEDULA:
+        case 1:
 
-            let res = await ejecutarSQLRespuesta(sql_consultar_saldo_cedula,[idAplicativoClipp, criterio]);
-            if(res.error == config.success)
+            let cli = await ejecutarSQLRespuesta(sql_consultar_saldo_cedula,[idAplicativoClipp, criterio]);
+            if(cli.error == config.success)
             {
-                if (res.info.length <= 0) 
+                if (cli.respuesta.length <= 0) 
                 {
-                    rspta = { en: -1, m: '1 Cliente no registrado.' };
+                    rspta = { error: -1, mensaje: '1 Cliente no registrado.' };
                     return;
                 }
                 var saldoActual = clientesClipp[0]['saldo'];
@@ -49,7 +49,7 @@ module.exports.registrarPago = async (req, res, next) => {
                     const registrar = await registrarClienteCelular(cliente);
                     rspta['s'] = monto;
                     rspta['sf'] = 0;
-                    rspta.error = config.success;
+                    rspta.error = !registrar.error ? config.success : registrar.error;
                     rspta.mensaje = registrar.mensaje
                     rspta.status = 200;
                 }
@@ -62,8 +62,8 @@ module.exports.registrarPago = async (req, res, next) => {
                         var faltante = monto - saldoActual;
                         const registrar = await registrarClienteCelular(cliente);
                         rspta['s'] = saldoActual;
-                        rspta['sf'] = faltante.toFixed(2);;
-                        rspta.error = config.success;
+                        rspta['sf'] = faltante.toFixed(2);
+                        rspta.error = !registrar.error ? config.success : registrar.error;
                         rspta.mensaje = registrar.mensaje
                         rspta.status = 200;
                     }
@@ -71,22 +71,21 @@ module.exports.registrarPago = async (req, res, next) => {
             }
             else
             {
-                rspta.en = res.error;
-                rspta.m = res.info;
+                rspta = cli;
             }
             break;
-            case CONSULTAR_CEDULA:
+            case 2:
                 if (!codigoPais) {
                     rspta = { error: 1, param: 'codigoPais' };
                     return;
                 }
-                let res = await ejecutarSQLRespuesta(SQL_CONSULTAR_SALDO_CELULAR, [idAplicativoClipp, criterio, parseInt(criterio), codigoPais]);
-                if(res.error == config.success)
+                let cli2 = await ejecutarSQLRespuesta(SQL_CONSULTAR_SALDO_CELULAR, [idAplicativoClipp, criterio, parseInt(criterio), codigoPais]);
+                if(cli2.error == config.success)
                 {
-                    if (res.info.length <= 0) 
+                    if (cli2.info.length <= 0) 
                     {
-                        rspta = { en: -1, m: 'Cliente no registrado.' };
-                        return;
+                        req.body = { error: -1, mensaje: 'Cliente no registrado.' };
+                        next();
                     }
                     var saldoActual = clientesClipp[0]['saldo'];
                     var cliente = { icono, cliente_clipp: clientesClipp, monto, idAdministradorRegistro, observacion, idTransaccionPeticion, fecha };
@@ -95,9 +94,8 @@ module.exports.registrarPago = async (req, res, next) => {
                         const registrar = await registrarClienteCelular(cliente);
                         rspta['s'] = monto;
                         rspta['sf'] = 0;
-                        rspta.error = config.success;
+                        rspta.error = !registrar.error ? config.success : registrar.error;
                         rspta.mensaje = registrar.mensaje
-                        rspta.status = 200;
                     }
                     else if (saldoActual > 0)
                     {
@@ -109,20 +107,18 @@ module.exports.registrarPago = async (req, res, next) => {
                             const registrar = await registrarClienteCelular(cliente);
                             rspta['s'] = saldoActual;
                             rspta['sf'] = faltante;
-                            rspta.error = config.success;
+                            rspta.error = !registrar.error ? config.success : registrar.error;
                             rspta.mensaje = registrar.mensaje
-                            rspta.status = 200;
                         }
                     }
                     else 
                     {
-                        rspta.en =  1, rspta.m = 'Cliente sin saldo clipp, cobre en efectivo.', rspta.s = 0, rspta.sf= monto;
+                        rspta.error =  1, rspta.mensaje = 'Cliente sin saldo clipp, cobre en efectivo.', rspta.s = 0, rspta.sf= monto;
                     }
                 }
                 else
                 {
-                    rspta.en = res.error;
-                    rspta.m = res.info;
+                    rspta = cli2;
                 }
                 break;
         default:
@@ -130,7 +126,7 @@ module.exports.registrarPago = async (req, res, next) => {
             break;
 
     }
-
+    req.body = rspta;
     next();
 }
 
@@ -141,18 +137,27 @@ module.exports.consultarSaldo = async (req, res, next) => {
     if (!idAdministrador) req.body = { error: 1, param: 'idAdministrador' };
     if (!idAplicativo) req.body = { error: 1, param: 'idAplicativo' };
     
-    if(req.body.error = 1)
+    if(req.body.error == 1)
         next();
-
-    const autorizado = await authorization.verifiAuthAdmin(req.body);
-    if(!autorizado)
-        req.body = autorizado
     else
     {
-        const saldos = await ejecutarSQLRespuesta(SQL_CONSULTAR_SALDO, [idAdministrador]);
-        req.body = { en: 1, lS: saldos }
-    }
-    next();
+        try {
+            const autorizado = await authorization.verifiAuthAdmin(req.body);
+            if(!autorizado)
+                req.body = autorizado
+            else
+            {
+                const saldos = await ejecutarSQLRespuesta(SQL_CONSULTAR_SALDO, [idAdministrador]);
+                req.body = { en: 1, lS: saldos }
+            }
+            next();
+        } catch (error) {
+            req.body = { error: config.error, mensaje: config.msg_error }
+            next();
+        }
+    }    
+
+    
 }
 
 module.exports.listarTarjetas = async (idAplicativoClipp, req, res) => {
@@ -166,28 +171,31 @@ module.exports.listarTarjetas = async (idAplicativoClipp, req, res) => {
     if (!imei) { error = 1; param = 'imei' };
     if (!con) { error = 1; param = 'con' };
 
-    if (error == 1) {
+    if (error == 1) 
+    {
         req.body.error = error;
         req.body.param = param;
-        next();
     }
-
-    const clientes = await ejecutarSQLRespuesta(SQL_CONSULTAR_SALDO_CELULAR, [idAplicativoClipp, criterio, parseInt(criterio), codigoPais]);
-    if (clientes.length <= 0)
-        req.body ={ error: 3 };
     else
     {
-        var idCliente = clientes[0]['idCliente'];
-        const tkss = await ejecutarSQLRespuesta(var_payphone.SQL_VERIFICAR_TOKEN, [idCliente, imei.toString(), con.toString()]);
-        if (tkss.length <= 0)
-            req.body = { error: 3 };
+        const clientes = await ejecutarSQLRespuesta(SQL_CONSULTAR_SALDO_CELULAR, [idAplicativoClipp, criterio, parseInt(criterio), codigoPais]);
+        if (clientes.respuesta.length <= 0)
+            req.body ={ error: 3 };
         else
         {
-            const tarjetas = await ejecutarSQLRespuesta(var_payphone.SQL_LISTAR_TARJETAS, [idCliente]);
-            req.body = { en: 1, lT: tarjetas };
+            var idCliente = clientes[0]['idCliente'];
+            const tkss = await ejecutarSQLRespuesta(var_payphone.SQL_VERIFICAR_TOKEN, [idCliente, imei.toString(), con.toString()]);
+            if (tkss.respuesta.length <= 0)
+                req.body = { error: 3 };
+            else
+            {
+                const tarjetas = await ejecutarSQLRespuesta(var_payphone.SQL_LISTAR_TARJETAS, [idCliente]);
+                req.body = { en: 1, lT: tarjetas };
+            }
         }
     }
     next();
+    
     
 }
 
@@ -208,45 +216,20 @@ module.exports.realizarCobro = async (idAplicativoClipp, req, res) => {
     if (error == 1) {
         req.body.error = error;
         req.body.param = param;
-        next();
     }
-
-    const clientes = await ejecutarSQLRespuesta(SQL_CONSULTAR_SALDO_CELULAR, [idAplicativoClipp, criterio, parseInt(criterio), codigoPais]);
-    if (clientes.respuesta.length <= 0)
-        req.body = { error: 3 };
-    else if (clientes[0]['cedula'] == null)
-        req.body = { en: 2, m: 'Por favor actualice la cédula en su perfil' };
     else
     {
-        var idCliente = clientes[0]['idCliente'];
-        req.body = await registrarCobroCliente(idAplicativoClipp, idCliente, con, saldo, clientes[0], idProceso, codigoPais);
+        const clientes = await ejecutarSQLRespuesta(SQL_CONSULTAR_SALDO_CELULAR, [idAplicativoClipp, criterio, parseInt(criterio), codigoPais]);
+        if (clientes.respuesta.length <= 0)
+            req.body = { error: 3 };
+        else if (clientes[0]['cedula'] == null)
+            req.body = { en: 2, m: 'Por favor actualice la cédula en su perfil' };
+        else
+        {
+            var idCliente = clientes[0]['idCliente'];
+            req.body = await registrarCobroCliente(idAplicativoClipp, idCliente, con, saldo, clientes[0], idProceso, codigoPais);
+        }
     }
     next();
     
 }
-
-SQL_REGISTART_TRANSACCION_PAY
-ID_TRANSACCION_ESTADO_TRANSACCION
-IP_SERVIDOR_NODE
-var_payphone.ES_TRANSACCION_TIPO_DONACION
-var_payphone.SQL_REGISTAR_TRANSACCION
-SQL_REGISTAR_TRANSACCION
-AMBIENTE
-CONSULTAR_CEDULA
-CONSULTAR_CELULAR
-SQL_CONSULTAR_SALDO_CELULAR
-var_payphone.SQL_TRANSACCION_TOKEN
-var_payphone.SQL_SOLICITUD_REVERSO_REVERSADA
-var_payphone.SQL_SOLICITUD_REVERSO
-var_payphone.SQL_ACTUALIZAR_CARDTOKEN
-var_payphone.ES_NO_APROBADA
-var_payphone.ES_NO_REALIZADA
-var_payphone.ES_APROBADA
-var_payphone.ES_ERROR
-var_payphone.SQL_LISTAR_TARJETAS
-IS_DESARROLLO
-SQL_CONSULTAR_SALDO
-ID_SALDO_RAZON_CLIPP
-ID_TRANSACCION_TIPO_EGRESO
-SQL_CONSULTAR_SALDO_CELULAR
-var_payphone.SQL_VERIFICAR_TOKEN

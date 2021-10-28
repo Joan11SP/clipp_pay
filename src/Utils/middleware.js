@@ -35,9 +35,9 @@ const validarDatosEntrada = async (req,res,next) => {
     }
 }
 
-const enviarDatos = async (req,res) => {
+const enviarDatos = (req,res) => {
 
-    res.status(req.status).json(req);
+    res.send(req.body);
 
 }
 

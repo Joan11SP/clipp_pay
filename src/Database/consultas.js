@@ -57,7 +57,7 @@ module.exports = {
     sql_buscar_cliente_clipp_pay_celular: "select idCliente FROM " + BD + ".cliente where celular = ?;",
     sql_obtener_codigo_pais_cliente: "select concat(codigoPais,SUBSTRING(celular, 2)) as phone from " + db_name + ".cliente where idCliente = ? LIMIT 1;",
     sql_obtener_car_cliente: "select tbl.cardHolder, tbl.tipoEntidad, (AES_DECRYPT('cn'.'op', ?)) AS 'op', (AES_DECRYPT('cn'.'sum', ?)) AS 'sum', (AES_DECRYPT('cn'.'mul', ?)) AS 'mul', (AES_DECRYPT('cn'.'div',?)) AS 'div', 'tbl'.'number', (AES_DECRYPT('tbl'.'verificationCode',?)) AS 'verificationCode', (AES_DECRYPT('tbl'.'cardToken',?)) AS 'cardToken' FROM " + db_name + "describ.con cn INNER JOIN " + db_name + "_encrip.tabl tbl ON cn.tks = tbl.tks AND cn.con = tbl.con WHERE cn.tks = ? AND cn.con = ? LIMIT 1;",
-    sql_verifi_auth_admin = "SELECT fecha_inicio FROM " + db_name + ".administradorSessionPush WHERE idAdministrador = ? AND  idPlataforma = ? AND imei = ?  AND auth = MD5(CONCAT(?, 'JpKradacTounk')) AND activado = 1 LIMIT 1;",
+    sql_verifi_auth_admin: "SELECT fecha_inicio FROM " + db_name + ".administradorSessionPush WHERE idAdministrador = ? AND  idPlataforma = ? AND imei = ?  AND auth = MD5(CONCAT(?, 'JpKradacTounk')) AND activado = 1 LIMIT 1;",
            
     
 }

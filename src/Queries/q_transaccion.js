@@ -11,6 +11,7 @@ const
     } = require('../Database/consultas');
 
 const var_payphone = require('../Database/payphone');
+const CryptoJS = require('crypto-js');
 
 const sql = util.promisify(mysql.query).bind(mysql);
 
@@ -29,7 +30,7 @@ const ejecutarSQL = async (query, variables) => {
 
 const ejecutarSQLRespuesta = async (query, vairables) => {
 
-    let res = { error: config.success, mensaje, respuesta };
+    let res = { error: config.success, mensaje:'', respuesta:null };
     try {
         const res_sql = await sql(query, vairables);
         res.respuesta = res_sql;
@@ -50,8 +51,7 @@ const registrarClienteCelular = async (cliente) => {
     let  apellidos =  cliente_clipp[0]['apellidos']
     let  cedula = cliente_clipp[0]['cedula']
     let  correo =   cliente_clipp[0]['correo']
-    let  celular =  cliente_clipp[0]['celular']
-    ;
+    let  celular =  cliente_clipp[0]['celular'];
     let respuesta = {};
 
     try {
@@ -78,8 +78,13 @@ const registrarClienteCelular = async (cliente) => {
             else 
             {
                 let update = await ejecutarSQLRespuesta(sql_update_cliente_clipp_pay_cedula, [nombres, apellidos, correo, cedula, buscar.respuesta[0]['idCliente']]);
-                let id_cliente = update.respuesta[0]['idCliente'];
-                respuesta = await registrarCobroClipp(icono, idClienteClipp, celular, id_cliente, monto, idAdministradorRegistro, observacion, idTransaccionPeticion, fecha);
+                if(update.respuesta > 0)
+                {
+                    let id_cliente = update.respuesta[0]['idCliente'];
+                    respuesta = await registrarCobroClipp(icono, idClienteClipp, celular, id_cliente, monto, idAdministradorRegistro, observacion, idTransaccionPeticion, fecha);
+                }
+                else
+                    respuesta = update;
             }
         }
         else
@@ -123,11 +128,11 @@ const registrarCobroClipp = async (icono, idClienteClipp, criterio, idCliente, m
     var transaccion = await registrarTransaccion(icono, idClienteClipp, monto, ID_TRANSACCION_TIPO_EGRESO, ID_SALDO_RAZON_CLIPP, 1, observacion, JSON.stringify({idClienteClipp: idClienteClipp, idTransaccionPeticion: idTransaccionPeticion, criterio: criterio}), idTransaccionPeticion, fecha_servicio, ID_TR_ENTIDAD_CLIPP);
 
     if (transaccion <= 0)
-        respuesta = {en: -1, m: 'Lo sentimos, pero la recarga no se puede realizar'};
+        respuesta = {error: -1, mensaje: 'Lo sentimos, pero la recarga no se puede realizar'};
     else
     {
         const registrar = await registrarTransaccionPay('1', '1', '1', '1', '1', '1', monto, idAdministradorRegistro);
-        repuesta = {en: 1, m: 'Transacción realizada correctamente.', idTransaccion: transaccion}
+        repuesta = {error: 1, mensaje: 'Transacción realizada correctamente.', idTransaccion: transaccion}
     }
     return respuesta;
 }
@@ -302,6 +307,7 @@ const realizarPagoVerificacionCliente = async (Authorization, costo, body, idT, 
     });
     return respuesta;
 }
+
 const solicitarReverso = async (body, idT) => {
 
     var idAplicativo = 1;
@@ -334,7 +340,6 @@ const solicitarReverso = async (body, idT) => {
     
 }
 
-
 const consultarDetalleTransaccion = async (tks, number, id_transaccion, idT) => {
     var idAplicativo = 1;
     const tokens = await ejecutarSQLRespuesta(var_payphone.SQL_TOKEN_APLICATIVO + AMBIENTE, [idAplicativo]);
@@ -348,7 +353,7 @@ const consultarDetalleTransaccion = async (tks, number, id_transaccion, idT) => 
                 Authorization: Authorization
             }
         };
-        request(options, function (err, httpResponse, respuesta) {
+        request(options, async (err, httpResponse, respuesta) => {
             if (err)
                 return administrador.imprimirErrLogs('Ocurrio un error en informacion adicional: ' + JSON.stringify(err) + ' idT: ' + idT + ' transaccion ' + id_transaccion);
             if (httpResponse['statusCode'] === 200) {
@@ -361,7 +366,6 @@ const consultarDetalleTransaccion = async (tks, number, id_transaccion, idT) => 
             //administrador.imprimirErrLogs('Ocurrio un problema en informacion adicional: ' + JSON.stringify(respuesta) + ' idT: ' + idT + ' transaccion ' + id_transaccion);
         });
 }
-
 
 const consultarDetalleTransaccion_v2 = async (tks, number, id_transaccion, idT) => {
     var idAplicativo = 1;
@@ -377,7 +381,7 @@ const consultarDetalleTransaccion_v2 = async (tks, number, id_transaccion, idT) 
             Authorization: Authorization
         }
     };
-    request(options, function (err, httpResponse, respuesta) {
+    request(options, async (err, httpResponse, respuesta) => {
         if (err)
             return administrador.imprimirErrLogs('Ocurrio un error en informacion adicional: ' + JSON.stringify(err) + ' idT: ' + idT + ' transaccion ' + id_transaccion);
         if (httpResponse['statusCode'] === 200) {
