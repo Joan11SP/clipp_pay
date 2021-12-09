@@ -7,7 +7,13 @@ const
         sql_insertar_cliente_clipp_pay,
         sql_update_cliente_clipp_pay_cedula,
         sql_obtener_codigo_pais_cliente,
-        sql_obtener_car_cliente
+        sql_obtener_car_cliente,
+        sql_registrar_transaccion,
+        ID_TRANSACCION_TIPO_EGRESO,
+        ID_SALDO_RAZON_CLIPP,
+        AMBIENTE,
+        ID_TRANSACCION_ESTADO_TRANSACCION,
+        SQL_REGISTART_TRANSACCION_PAY
     } = require('../Database/consultas');
 
 const var_payphone = require('../Database/payphone');
@@ -46,12 +52,12 @@ const registrarClienteCelular = async (cliente) => {
 
     let { icono, cliente_clipp, monto, idAdministradorRegistro, observacion, idTransaccionPeticion, fecha } = cliente;
     
-    let  idClienteClipp = cliente_clipp[0]['idCliente']
-    let  nombres = cliente_clipp[0]['nombres']
-    let  apellidos =  cliente_clipp[0]['apellidos']
-    let  cedula = cliente_clipp[0]['cedula']
-    let  correo =   cliente_clipp[0]['correo']
-    let  celular =  cliente_clipp[0]['celular'];
+    let  idClienteClipp = cliente_clipp.idCliente
+    let  nombres = cliente_clipp.nombres
+    let  apellidos =  cliente_clipp.apellidos
+    let  cedula = cliente_clipp.cedula
+    let  correo =   cliente_clipp.correo
+    let  celular =  cliente_clipp.celular;
     let respuesta = {};
 
     try {
@@ -63,24 +69,24 @@ const registrarClienteCelular = async (cliente) => {
                 let insert_cliente = await ejecutarSQLRespuesta(sql_insertar_cliente_clipp_pay, [nombres, apellidos, cedula, correo, celular]);
                 if (insert_cliente.error == config.success) 
                 {
-                    if (insert_cliente.respuesta['insertId'] <= 0) 
+                    if (insert_cliente.respuestainsertId <= 0) 
                     {
                         respuesta.error = config.error;
                         respuesta.mensaje = 'Lo sentimos, pero el usuario no se encuentra registrado.';
                     }
                     else 
                     {
-                        let id_cliente = insert_cliente.info['insertId'];
+                        let id_cliente = insert_cliente.infoinsertId;
                         respuesta = await registrarCobroClipp(icono, idClienteClipp, celular, id_cliente, monto, idAdministradorRegistro, observacion, idTransaccionPeticion, fecha);
                     }                    
                 }
             }
             else 
             {
-                let update = await ejecutarSQLRespuesta(sql_update_cliente_clipp_pay_cedula, [nombres, apellidos, correo, cedula, buscar.respuesta[0]['idCliente']]);
+                let update = await ejecutarSQLRespuesta(sql_update_cliente_clipp_pay_cedula, [nombres, apellidos, correo, cedula, buscar.respuesta.idCliente]);
                 if(update.respuesta > 0)
                 {
-                    let id_cliente = update.respuesta[0]['idCliente'];
+                    let id_cliente = update.respuesta.idCliente;
                     respuesta = await registrarCobroClipp(icono, idClienteClipp, celular, id_cliente, monto, idAdministradorRegistro, observacion, idTransaccionPeticion, fecha);
                 }
                 else
@@ -105,7 +111,7 @@ const registrarCobroCliente = async (idAplicativo, idCliente, con, costo, email,
         const obt_codigo = await ejecutarSQLRespuesta(sql_obtener_codigo_pais_cliente, idCliente);
 
         if (obt_codigo.respuesta.length > 0) {
-            phoneNumber = obt_codigo.respuesta[0]['phone'];
+            phoneNumber = obt_codigo.respuesta.phone;
             const obt_car = await ejecutarSQLRespuesta(sql_obtener_car_cliente, idCliente);
             if (obt_car.respuesta.length <= 0)
                 respuesta = { error: -1, mensaje: 'El cliente no posee una tarjeta registrada favor solicitar al cliente registrar una o pagar en efectivo.' }
@@ -136,24 +142,24 @@ const registrarCobroClipp = async (icono, idClienteClipp, criterio, idCliente, m
     }
     return respuesta;
 }
-const registrarTransaccionPay = async (idServicioAplicativo, idEntidad, idCliente, idEstado, idTipoPago, idCuenta, saldo, idAdministradorRegistro, callback) => {
+const registrarTransaccionPay = async (idServicioAplicativo, idEntidad, idCliente, idEstado, idTipoPago, idCuenta, saldo, idAdministradorRegistro) => {
 
     var regis = await ejecutarSQLRespuesta(SQL_REGISTART_TRANSACCION_PAY, [idServicioAplicativo, idEntidad, idCliente, idEstado, idTipoPago, idCuenta, saldo, idAdministradorRegistro]);
-    if (regis.respuesta['error'] || regis.respuesta['insertId'] <= 0)
+    if (regis.respuestaerror || regis.respuestainsertId <= 0)
         return regis = -1;
-    return regis.respuesta['insertId'];
+    return regis.respuestainsertId;
     
 }
 const registrarTransaccion = async (icono, idCliente, saldo, idTransaccionTipo, idSaldoRazon, idAdministradorRegistro, observacion, opcional, idTransaccionPeticion, fecha_servicio, idTransaccionEntidad) => {
     
-    var regis = await ejecutarSQLRespuesta(SQL_REGISTART_TRANSACCION, [icono, idCliente, ID_TRANSACCION_ESTADO_TRANSACCION, idTransaccionTipo, idSaldoRazon, saldo, idAdministradorRegistro, observacion, opcional, idTransaccionPeticion, idTransaccionEntidad, fecha_servicio]);
-    if (regis.respuesta['error'] || regis.respuesta['insertId'] <= 0)
+    var regis = await ejecutarSQLRespuesta(sql_registrar_transaccion, [icono, idCliente, ID_TRANSACCION_ESTADO_TRANSACCION, idTransaccionTipo, idSaldoRazon, saldo, idAdministradorRegistro, observacion, opcional, idTransaccionPeticion, idTransaccionEntidad, fecha_servicio]);
+    if (regis.respuestaerror || regis.respuestainsertId <= 0)
         return regis = -1;
-    return regis.respuesta['insertId'];
+    return regis.respuestainsertId;
 }
 
 const debitarCliente = async (idAplicativo, car, idCliente, con, costo, cliente, idProceso, codigoPais) => {
-    var phoneNumber = codigoPais + cliente['celular'];
+    var phoneNumber = codigoPais + clientecelular;
     let respuesta = {};
     if (!car.verificationCode || !car.div || !car.mul || !car.sum || !car.op) {
         respuesta = { error: 4, m: 'Error grave, la clave proporcionada está incompleta, por favor comunicarce con kradac inmediatamente' };
@@ -184,7 +190,7 @@ const debitarCliente = async (idAplicativo, car, idCliente, con, costo, cliente,
         tax: 0,
         service: 0,
         tip: 0,
-        email: cliente['correo'],
+        email: clientecorreo,
         phoneNumber: phoneNumber,
         optionalParameter: 'CLIPP Donación: ' + idProceso,
     };
@@ -194,19 +200,19 @@ const debitarCliente = async (idAplicativo, car, idCliente, con, costo, cliente,
         respuesta = { en: -1, m: 'La aplicación no está autorizada para transaccionar con tarjetas de crédito.' }
     else 
     {
-        let Authorization = token_aplicativo[0]['Authorization'];
-        let IDENTIFICATION = IP_SERVIDOR_NODE + '.' + token_aplicativo.respuesta[0]['identificativo'];
-        const regis_transaccion = await ejecutarSQLRespuesta(var_payphone.SQL_REGISTAR_TRANSACCION, [idCliente, IDENTIFICATION, con, car.number, body.amount, body.amountWithTax, body.amountWithoutTax, body.tax, body.service, body.tip, body.optionalParameter, cliente['correo'], phoneNumber, var_payphone.ES_TRANSACCION_TIPO_DONACION, JSON.stringify({ idProceso: idProceso })]);
-        if (regis_transaccion.respuesta['insertId'] <= 0)
+        let Authorization = token_aplicativo.Authorization;
+        let IDENTIFICATION = IP_SERVIDOR_NODE + '.' + token_aplicativo.respuesta.identificativo;
+        const regis_transaccion = await ejecutarSQLRespuesta(sql_registrar_transaccion, [idCliente, IDENTIFICATION, con, car.number, body.amount, body.amountWithTax, body.amountWithoutTax, body.tax, body.service, body.tip, body.optionalParameter, clientecorreo, phoneNumber, var_payphone.ES_TRANSACCION_TIPO_DONACION, JSON.stringify({ idProceso: idProceso })]);
+        if (regis_transaccion.respuestainsertId <= 0)
             respuesta = { en: -2, m: '¡No se pudo realizar la compra.' };
         else 
         {
-            var key = CryptoJS.enc.Utf8.parse(token_aplicativo.respuesta[0]['passwordCodificacion']);
+            var key = CryptoJS.enc.Utf8.parse(token_aplicativo.respuesta.passwordCodificacion);
             var iv = CryptoJS.enc.Utf8.parse('');
-            var cardholder = CryptoJS.AES.encrypt(cliente['nombre'], key, { iv: iv });
+            var cardholder = CryptoJS.AES.encrypt(clientenombre, key, { iv: iv });
             var holder = cardholder + '';
 
-            var encrbase = car['cardHolder'];
+            var encrbase = carcardHolder;
             if (encrbase != null) 
             {
                 var duenio = base64decode(encrbase + '');
@@ -217,13 +223,13 @@ const debitarCliente = async (idAplicativo, car, idCliente, con, costo, cliente,
             if (car.cardToken.toString('ascii').length > 36) 
             {
                 url = 'https://pay.payphonetodoesposible.com/api/v2/transaction/Pay';
-                body.documentId = cliente['cedula'];
-                body.storeId = token_aplicativo.respuesta[0]['idTienda'];
+                body.documentId = clientecedula;
+                body.storeId = token_aplicativo.respuesta.idTienda;
                 body.cardHolder = holder;
             }
 
-            body.clientTransactionId = IDENTIFICATION + '/' + regis_transaccion.respuesta['insertId'];
-            respuesta = await realizarPagoVerificacionCliente(Authorization, costo, body, transaccion['insertId'], idCliente, url, car.number, res);
+            body.clientTransactionId = IDENTIFICATION + '/' + regis_transaccion.respuestainsertId;
+            respuesta = await realizarPagoVerificacionCliente(Authorization, costo, body, transaccioninsertId, idCliente, url, car.number, res);
         }
     }
     return respuesta;
@@ -317,7 +323,7 @@ const solicitarReverso = async (body, idT) => {
         return administrador.imprimirErrLogs('Por favor registre el token ');
     else
     {
-        let Authorization = tokens[0]['Authorization'];
+        let Authorization = tokens.Authorization;
         await ejecutarSQL(var_payphone.SQL_SOLICITUD_REVERSO, [idT]);
         var options = {
             method: 'POST',
@@ -345,7 +351,7 @@ const consultarDetalleTransaccion = async (tks, number, id_transaccion, idT) => 
     const tokens = await ejecutarSQLRespuesta(var_payphone.SQL_TOKEN_APLICATIVO + AMBIENTE, [idAplicativo]);
     if (tokens.respuesta.length <= 0)
             return administrador.imprimirErrLogs('Por favor registre el token ');
-        let Authorization = tokens[0]['Authorization'];
+        let Authorization = tokens.Authorization;
         var options = {
             method: 'GET',
             url: 'https://pay.payphonetodoesposible.com/api/Sale/' + id_transaccion,
@@ -356,10 +362,10 @@ const consultarDetalleTransaccion = async (tks, number, id_transaccion, idT) => 
         request(options, async (err, httpResponse, respuesta) => {
             if (err)
                 return administrador.imprimirErrLogs('Ocurrio un error en informacion adicional: ' + JSON.stringify(err) + ' idT: ' + idT + ' transaccion ' + id_transaccion);
-            if (httpResponse['statusCode'] === 200) {
+            if (httpResponsestatusCode === 200) {
                 var respuestajs = JSON.parse(respuesta);
-                var credito = respuestajs['cardType'] === 'Debit' ? 2 : 1;
-                await ejecutarSQL(var_payphone.SQL_INFORMACION_ADICIONAL_TARJETA, [credito, base64encode(respuestajs['bin']), base64encode(respuestajs['lastDigits']), respuestajs['cardBrandCode'], respuestajs['cardBrand'], respuestajs['document'], respuestajs['currency'], respuestajs['regionIso'], respuestajs['transactionType'], tks, number]);
+                var credito = respuestajscardType === 'Debit' ? 2 : 1;
+                await ejecutarSQL(var_payphone.SQL_INFORMACION_ADICIONAL_TARJETA, [credito, base64encode(respuestajsbin), base64encode(respuestajslastDigits), respuestajscardBrandCode, respuestajscardBrand, respuestajsdocument, respuestajscurrency, respuestajsregionIso, respuestajstransactionType, tks, number]);
                 return await ejecutarSQL(var_payphone.SQL_INFORMACION_ADICIONAL_TRANSACCION, [credito, idT]);
             }
             return await consultarDetalleTransaccion_v2(tks, number, id_transaccion, idT);
@@ -384,10 +390,10 @@ const consultarDetalleTransaccion_v2 = async (tks, number, id_transaccion, idT) 
     request(options, async (err, httpResponse, respuesta) => {
         if (err)
             return administrador.imprimirErrLogs('Ocurrio un error en informacion adicional: ' + JSON.stringify(err) + ' idT: ' + idT + ' transaccion ' + id_transaccion);
-        if (httpResponse['statusCode'] === 200) {
+        if (httpResponsestatusCode === 200) {
             var respuestajs = JSON.parse(respuesta);
-            var credito = respuestajs['cardType'] === 'Debit' ? 2 : 1;
-            await ejecutarSQL(var_payphone.SQL_INFORMACION_ADICIONAL_TARJETA, [credito, base64encode(respuestajs['bin']), base64encode(respuestajs['lastDigits']), respuestajs['cardBrandCode'], respuestajs['cardBrand'], respuestajs['document'], respuestajs['currency'], respuestajs['regionIso'], respuestajs['transactionType'], tks, number]);
+            var credito = respuestajscardType === 'Debit' ? 2 : 1;
+            await ejecutarSQL(var_payphone.SQL_INFORMACION_ADICIONAL_TARJETA, [credito, base64encode(respuestajsbin), base64encode(respuestajslastDigits), respuestajscardBrandCode, respuestajscardBrand, respuestajsdocument, respuestajscurrency, respuestajsregionIso, respuestajstransactionType, tks, number]);
             await ejecutarSQL(var_payphone.SQL_INFORMACION_ADICIONAL_TRANSACCION, [credito, idT]);
             return await ejecutarSQL(var_payphone.SQL_TRANSACCION_TOKEN, [credito, idT]);
         }

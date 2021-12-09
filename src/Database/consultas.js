@@ -58,6 +58,17 @@ module.exports = {
     sql_obtener_codigo_pais_cliente: "select concat(codigoPais,SUBSTRING(celular, 2)) as phone from " + db_name + ".cliente where idCliente = ? LIMIT 1;",
     sql_obtener_car_cliente: "select tbl.cardHolder, tbl.tipoEntidad, (AES_DECRYPT('cn'.'op', ?)) AS 'op', (AES_DECRYPT('cn'.'sum', ?)) AS 'sum', (AES_DECRYPT('cn'.'mul', ?)) AS 'mul', (AES_DECRYPT('cn'.'div',?)) AS 'div', 'tbl'.'number', (AES_DECRYPT('tbl'.'verificationCode',?)) AS 'verificationCode', (AES_DECRYPT('tbl'.'cardToken',?)) AS 'cardToken' FROM " + db_name + "describ.con cn INNER JOIN " + db_name + "_encrip.tabl tbl ON cn.tks = tbl.tks AND cn.con = tbl.con WHERE cn.tks = ? AND cn.con = ? LIMIT 1;",
     sql_verifi_auth_admin: "SELECT fecha_inicio FROM " + db_name + ".administradorSessionPush WHERE idAdministrador = ? AND  idPlataforma = ? AND imei = ?  AND auth = MD5(CONCAT(?, 'JpKradacTounk')) AND activado = 1 LIMIT 1;",
+    sql_registrar_transaccion: "INSERT INTO " + db_name + "_encrip.transaction (idCliente, ip, con, number, amount, amountWithTax, amountWithoutTax, tax, service, tip, optional, email, phoneNumber, type, opcional) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    sql_consultar_saldo: "SELECT sr.razon, s.saldo FROM  " + db_name + ".saldo s INNER JOIN  " + db_name + ".saldoRazon sr ON sr.idSaldoRazon = s.idSaldoRazon WHERE idAdministrador = ?;",
+    sql_consultar_saldo_celular: "SELECT IFNULL(sr.razon,'') AS razon, IFNULL(saldo,0) AS saldo, cli.idCliente, cli.nombres, cli.apellidos, IFNULL(cli.cedula,'') AS cedula, cli.correo, cli.celular FROM " + db_name + ".cliente cli LEFT JOIN " + db_name + ".saldo s ON cli.idCliente = s.idCliente  LEFT JOIN " + db_name + ".saldoRazon sr ON sr.idSaldoRazon = s.idSaldoRazon AND sr.idSaldoRazon = 1 WHERE cli.idAplicativo = ? AND (cli.celular = ? OR cli.celular = ? ) AND codigoPais = ? LIMIT 1;",
+    ID_SALDO_RAZON_CLIPP: 1,
+    ID_TRANSACCION_TIPO_EGRESO : 2,
+    AMBIENTE: " AND produccion = 1 LIMIT 1;",
+    ID_TRANSACCION_ESTADO_TRANSACCION: 1,
+    SQL_REGISTART_TRANSACCION_PAY:"INSERT INTO " + db_name + "_pay.transaccion (idServicioAplicativo, idEntidad, idCliente, idEstado, idTipoPago, idCuenta, saldo, idAdministradorRegistro) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    SQL_AUTENTICAR: "SELECT sa.idAplicativo, sa.idServicioAplicativo, sa.idCompania, sa.idAplicativoClipp, sa.servicio, CAST(sa.isHibrido AS UNSIGNED) AS isHibrido, sa.icono FROM clipp_pay.compania acs LEFT JOIN clipp_pay.companiaAccesoIp acsIp ON acs.idCompania = acsIp.idCompania AND acs.restringirPorIp = 1 AND acsIp.ip = ? AND acsIp.permiso = 1 INNER JOIN clipp_pay.servicioAplicativo sa ON sa.idCompania = acs.idCompania WHERE acs.usuario = ? AND acs.contrasenia = MD5(MD5(concat(?, MD5('ApiJpDaptsPagos')))) AND acs.token = ? AND sa.token = ?;"
+
+
            
     
 }

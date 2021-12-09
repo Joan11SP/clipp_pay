@@ -1,13 +1,20 @@
 const config = require("../config");
 const { ejecutarSQL, ejecutarSQLRespuesta, registrarClienteCelular,registrarCobroCliente } = require('../Queries/q_transaccion');
-const { sql_consultar_saldo_cedula } = require('../Database/consultas');
+const 
+{ 
+    sql_consultar_saldo_cedula,
+    sql_consultar_saldo, 
+    sql_consultar_saldo_celular
+} 
+= require('../Database/consultas');
+const payphone = require('../Database/payphone');
 const authorization = require('../Utils/auth');
 
 
 
-module.exports.registrarPago = async (req, res, next) => {
+const registrarPago = async (req, res, next) => {
 
-    var { idAplicativo, idServicioAplicativo, idCompania, idAplicativoClipp, isHibrido, icono } = req.headers;
+    const { idAplicativo, idServicioAplicativo, idCompania, idAplicativoClipp, isHibrido, icono } = req.body;
     var { saldo, observacion, idTransaccionPeticion, criterio, tipo, fecha, codigoPais } = req.body;
     var idAdministradorRegistro = 1;
 
@@ -34,70 +41,29 @@ module.exports.registrarPago = async (req, res, next) => {
     switch (parseInt(tipo)){
         case 1:
 
-            let cli = await ejecutarSQLRespuesta(sql_consultar_saldo_cedula,[idAplicativoClipp, criterio]);
-            if(cli.error == config.success)
+            try 
             {
-                if (cli.respuesta.length <= 0) 
+                let cli = await ejecutarSQLRespuesta(sql_consultar_saldo_cedula,[idAplicativoClipp, criterio]);
+                if(cli.error == config.success)
                 {
-                    rspta = { error: -1, mensaje: '1 Cliente no registrado.' };
-                    return;
-                }
-                var saldoActual = clientesClipp[0]['saldo'];
-                var cliente = { icono, cliente_clipp: clientesClipp, monto, idAdministradorRegistro, observacion, idTransaccionPeticion, fecha };
-                if(saldoActual >= monto)
-                {
-                    const registrar = await registrarClienteCelular(cliente);
-                    rspta['s'] = monto;
-                    rspta['sf'] = 0;
-                    rspta.error = !registrar.error ? config.success : registrar.error;
-                    rspta.mensaje = registrar.mensaje
-                    rspta.status = 200;
-                }
-                else
-                {
-                    if (isHibrido == 0)                     
-                        rspta = { en: -1, m: 'Saldo insuficiente.' };                    
-                    else
+                    if (cli.respuesta.length <= 0) 
                     {
-                        var faltante = monto - saldoActual;
-                        const registrar = await registrarClienteCelular(cliente);
-                        rspta['s'] = saldoActual;
-                        rspta['sf'] = faltante.toFixed(2);
-                        rspta.error = !registrar.error ? config.success : registrar.error;
-                        rspta.mensaje = registrar.mensaje
-                        rspta.status = 200;
+                        rspta = { error: -1, mensaje: '1 Cliente no registrado.' };
+                        return;
                     }
-                }
-            }
-            else
-            {
-                rspta = cli;
-            }
-            break;
-            case 2:
-                if (!codigoPais) {
-                    rspta = { error: 1, param: 'codigoPais' };
-                    return;
-                }
-                let cli2 = await ejecutarSQLRespuesta(SQL_CONSULTAR_SALDO_CELULAR, [idAplicativoClipp, criterio, parseInt(criterio), codigoPais]);
-                if(cli2.error == config.success)
-                {
-                    if (cli2.info.length <= 0) 
-                    {
-                        req.body = { error: -1, mensaje: 'Cliente no registrado.' };
-                        next();
-                    }
-                    var saldoActual = clientesClipp[0]['saldo'];
-                    var cliente = { icono, cliente_clipp: clientesClipp, monto, idAdministradorRegistro, observacion, idTransaccionPeticion, fecha };
-                    if(saldoActual >= monto)
+                    var saldoActual = cli.respuesta[0].saldo;
+                    var cliente = { icono, cliente_clipp: cli.respuesta, monto, idAdministradorRegistro, observacion, idTransaccionPeticion, fecha };
+                    let monto_trans = parseFloat(monto)
+                    if(saldoActual >=  monto_trans)
                     {
                         const registrar = await registrarClienteCelular(cliente);
                         rspta['s'] = monto;
                         rspta['sf'] = 0;
                         rspta.error = !registrar.error ? config.success : registrar.error;
                         rspta.mensaje = registrar.mensaje
+                        rspta.status = 200;
                     }
-                    else if (saldoActual > 0)
+                    else
                     {
                         if (isHibrido == 0)                     
                             rspta = { en: -1, m: 'Saldo insuficiente.' };                    
@@ -106,19 +72,75 @@ module.exports.registrarPago = async (req, res, next) => {
                             var faltante = monto - saldoActual;
                             const registrar = await registrarClienteCelular(cliente);
                             rspta['s'] = saldoActual;
-                            rspta['sf'] = faltante;
+                            rspta['sf'] = faltante.toFixed(2);
                             rspta.error = !registrar.error ? config.success : registrar.error;
                             rspta.mensaje = registrar.mensaje
+                            rspta.status = 200;
                         }
-                    }
-                    else 
-                    {
-                        rspta.error =  1, rspta.mensaje = 'Cliente sin saldo clipp, cobre en efectivo.', rspta.s = 0, rspta.sf= monto;
                     }
                 }
                 else
                 {
-                    rspta = cli2;
+                    rspta = cli;
+                }
+            } 
+            catch (error) 
+            {
+                rspta = { error: -1, mensaje: config.msg_error };
+            }
+            break;
+            case 2:
+                try 
+                {
+                    if (!codigoPais) {
+                        rspta = { error: 1, param: 'codigoPais' };
+                        return;
+                    }
+                    let cli2 = await ejecutarSQLRespuesta(sql_consultar_saldo_celular, [idAplicativoClipp, criterio, parseInt(criterio), codigoPais]);
+                    if(cli2.error == config.success)
+                    {
+                        if (cli2.info.length <= 0) 
+                        {
+                            req.body = { error: -1, mensaje: 'Cliente no registrado.' };
+                            next();
+                        }
+                        var saldoActual = cli2.respuesta[0].saldo;
+                        var cliente = { icono, cliente_clipp: cli2.respuesta, monto, idAdministradorRegistro, observacion, idTransaccionPeticion, fecha };
+                        if(saldoActual >= monto)
+                        {
+                            const registrar = await registrarClienteCelular(cliente);
+                            rspta['s'] = monto;
+                            rspta['sf'] = 0;
+                            rspta.error = !registrar.error ? config.success : registrar.error;
+                            rspta.mensaje = registrar.mensaje
+                        }
+                        else if (saldoActual > 0)
+                        {
+                            if (isHibrido == 0)                     
+                                rspta = { en: -1, m: 'Saldo insuficiente.' };                    
+                            else
+                            {
+                                var faltante = monto - saldoActual;
+                                const registrar = await registrarClienteCelular(cliente);
+                                rspta['s'] = saldoActual;
+                                rspta['sf'] = faltante;
+                                rspta.error = !registrar.error ? config.success : registrar.error;
+                                rspta.mensaje = registrar.mensaje
+                            }
+                        }
+                        else 
+                        {
+                            rspta.error =  1, rspta.mensaje = 'Cliente sin saldo clipp, cobre en efectivo.', rspta.s = 0, rspta.sf= monto;
+                        }
+                    }
+                    else
+                    {
+                        rspta = cli2;
+                    }    
+                } 
+                catch (error) 
+                {
+                    rspta = { error: -1, mensaje: config.msg_error };  
                 }
                 break;
         default:
@@ -130,9 +152,9 @@ module.exports.registrarPago = async (req, res, next) => {
     next();
 }
 
-module.exports.consultarSaldo = async (req, res, next) => {
+const consultarSaldo = async (req, res, next) => {
 
-    var { idAdministrador, idAplicativo, auth, idPlataforma, imei, marca, modelo, so, vs } = req.body;
+    var { idAdministrador, idAplicativo } = req.body;
 
     if (!idAdministrador) req.body = { error: 1, param: 'idAdministrador' };
     if (!idAplicativo) req.body = { error: 1, param: 'idAplicativo' };
@@ -147,7 +169,7 @@ module.exports.consultarSaldo = async (req, res, next) => {
                 req.body = autorizado
             else
             {
-                const saldos = await ejecutarSQLRespuesta(SQL_CONSULTAR_SALDO, [idAdministrador]);
+                const saldos = await ejecutarSQLRespuesta(sql_consultar_saldo, [parseInt(idAdministrador)]);
                 req.body = { en: 1, lS: saldos }
             }
             next();
@@ -160,9 +182,9 @@ module.exports.consultarSaldo = async (req, res, next) => {
     
 }
 
-module.exports.listarTarjetas = async (idAplicativoClipp, req, res) => {
+const listarTarjetas = async (req, res, next) => {
 
-    var { imei, con, criterio, tipo, codigoPais } = req.body;
+    var { imei, con, criterio, tipo, codigoPais,idAplicativoClipp } = req.body;
     let error = 0, param = '';
 
     if (!codigoPais) { error = 1; param = 'codigoPais' };
@@ -178,20 +200,26 @@ module.exports.listarTarjetas = async (idAplicativoClipp, req, res) => {
     }
     else
     {
-        const clientes = await ejecutarSQLRespuesta(SQL_CONSULTAR_SALDO_CELULAR, [idAplicativoClipp, criterio, parseInt(criterio), codigoPais]);
-        if (clientes.respuesta.length <= 0)
-            req.body ={ error: 3 };
-        else
-        {
-            var idCliente = clientes[0]['idCliente'];
-            const tkss = await ejecutarSQLRespuesta(var_payphone.SQL_VERIFICAR_TOKEN, [idCliente, imei.toString(), con.toString()]);
-            if (tkss.respuesta.length <= 0)
-                req.body = { error: 3 };
+        try {
+            const clientes = await ejecutarSQLRespuesta(sql_consultar_saldo_celular, [idAplicativoClipp, criterio, parseInt(criterio), codigoPais]);
+            if (clientes.respuesta.length <= 0)
+                req.body ={ error: 3 };
             else
             {
-                const tarjetas = await ejecutarSQLRespuesta(var_payphone.SQL_LISTAR_TARJETAS, [idCliente]);
-                req.body = { en: 1, lT: tarjetas };
+                let respuesta = clientes.respuesta[0]
+                let idCliente = respuesta.idCliente;
+                const tkss = await ejecutarSQLRespuesta(payphone.SQL_VERIFICAR_TOKEN, [idCliente, imei.toString(), con.toString()]);
+                if (tkss.respuesta.length <= 0)
+                    req.body = { error: 3 };
+                else
+                {
+                    const tarjetas = await ejecutarSQLRespuesta(payphone.SQL_LISTAR_TARJETAS, [idCliente]);
+                    req.body = { en: 1, lT: tarjetas };
+                }
             }
+        } catch (error) {
+            req.body = { error: config.error, mensaje: config.msg_error }
+            next();
         }
     }
     next();
@@ -199,7 +227,7 @@ module.exports.listarTarjetas = async (idAplicativoClipp, req, res) => {
     
 }
 
-module.exports.realizarCobro = async (idAplicativoClipp, req, res) => {
+const realizarCobro = async (idAplicativoClipp, req, res) => {
 
     var { imei, con, saldo, idProceso, criterio, tipo, codigoPais } = req.body;
     let error = 0, param = '';
@@ -219,7 +247,7 @@ module.exports.realizarCobro = async (idAplicativoClipp, req, res) => {
     }
     else
     {
-        const clientes = await ejecutarSQLRespuesta(SQL_CONSULTAR_SALDO_CELULAR, [idAplicativoClipp, criterio, parseInt(criterio), codigoPais]);
+        const clientes = await ejecutarSQLRespuesta(sql_consultar_saldo_celular, [idAplicativoClipp, criterio, parseInt(criterio), codigoPais]);
         if (clientes.respuesta.length <= 0)
             req.body = { error: 3 };
         else if (clientes[0]['cedula'] == null)
@@ -232,4 +260,9 @@ module.exports.realizarCobro = async (idAplicativoClipp, req, res) => {
     }
     next();
     
+}
+module.exports = {
+    listarTarjetas,
+    registrarPago,
+    consultarSaldo
 }

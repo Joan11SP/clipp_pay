@@ -1,5 +1,7 @@
 const config = require('../config');
 const { validarAcceso,validarPersona } = require('../Queries/q_acceso')
+const { ejecutarSQL, ejecutarSQLRespuesta } = require('../Queries/q_transaccion');
+const { SQL_AUTENTICAR } = require('../Database/consultas')
 
 const validarDatosEntrada = async (req,res,next) => {
 
@@ -41,7 +43,60 @@ const enviarDatos = (req,res) => {
 
 }
 
+const validarTransaccion = async (req,res,next) => {
+
+    var ip = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || (req.connection.socket ? req.connection.socket.remoteAddress : null);
+    var ipInfo = req.ipInfo;
+    try {
+        console.log('/pagos/registro_pago ip: ' + ip + ', ipInfo: ' + JSON.stringify(ipInfo));
+    } catch (err) {
+        return res.status(401).send({m: 'Administrador no autorizado err: ' + err});
+    }
+    if (!ip)
+        return res.status(401).send({m: 'Administrador no autorizado ip: ' + ip});
+
+    var token = req.headers.token;
+    var tokenAplicativo = req.body.tokenAplicativo;
+    if (!token)
+        return res.status(400).send({m: 'Parameter missing code 0'});
+    if (!tokenAplicativo)
+        return res.status(400).send({m: 'Parameter missing code 1'});
+
+    if (!req.headers.authorization || req.headers.authorization.indexOf('Basic ') === -1)
+        return res.status(401).send({m: 'Administrador no autorizado.'});
+
+    var base64Credentials = req.headers.authorization.split(' ')[1];
+    var credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
+    var [usuario, clave] = credentials.split(':');
+
+//    administrador.imprimirOneLogs('r_c_recargas /recargar');
+    try {
+        
+        const usuarios = await ejecutarSQLRespuesta(SQL_AUTENTICAR, [ip, usuario, clave, token, tokenAplicativo]);
+
+        if(usuarios.respuesta.length <= 0)
+            return res.status(401).send({m: 'Administrador no autorizado.'});
+        req.body.version = req.headers.version;
+        req.body.idAplicativo = usuarios.respuesta[0].idAplicativo;
+        req.body.idServicioAplicativo = usuarios.respuesta[0].idServicioAplicativo;
+        req.body.idCompania = usuarios.respuesta[0].idCompania;
+        req.body.idAplicativoClipp = usuarios.respuesta[0].idAplicativoClipp;
+        req.body.icono = usuarios.respuesta[0].icono;
+        req.body.isHibrido = usuarios.respuesta[0].isHibrido;
+
+        if(req.headers.version === '1.0.0')
+            next();
+        else
+            return res.status(320).send({m: 'MENSAJE_DEPRECATE'});
+
+    } catch (error) {
+        return res.status(320).send({m: config.msg_error});
+    }
+
+}
+
 module.exports = {
     validarDatosEntrada,
-    enviarDatos
+    enviarDatos,
+    validarTransaccion
 }
